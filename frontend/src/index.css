@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* custom global overrides */
+body {
+  @apply bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-200 antialiased;
+}
+
+/* scrollbar */
+::-webkit-scrollbar {
+  @apply w-2 h-2;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-400 rounded;
+}
