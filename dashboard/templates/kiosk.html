@@ -93,7 +93,7 @@ async function refreshStats() {
   try {
     const d = await (await fetch('/api/attendance/stats/today')).json();
     document.getElementById('stat-present').textContent = d.inside != null ? d.inside : '--';
-    document.getElementById('stat-total').textContent   = d.total_employees != null ? d.total_employees : '--';
+    document.getElementById('stat-total').textContent   = d.total_users != null ? d.total_users : '--';
   } catch (e) {}
 }
 refreshStats(); setInterval(refreshStats, 15000);
@@ -102,7 +102,7 @@ refreshStats(); setInterval(refreshStats, 15000);
 async function reloadEncodings() {
   try {
     const d = await (await fetch('/api/kiosk/reload', { method: 'POST' })).json();
-    showState('info', '&#10003;', 'Encodings Reloaded', d.employees + ' employee(s) loaded');
+    showState('info', '&#10003;', 'Encodings Reloaded', d.users + ' user(s) loaded');
     setTimeout(resetState, 3000);
   } catch (e) {
     showState('error', '&#10007;', 'Reload Failed', 'Check server logs');
@@ -181,7 +181,7 @@ function drawBoxes(faces) {
     ctx.lineWidth = 3;
     ctx.strokeRect(x, y, w, h);
 
-    const label = f.is_known ? (f.full_name || f.employee_id || '') : 'Unknown';
+    const label = f.is_known ? (f.full_name || f.user_id || '') : 'Unknown';
     const pct   = Math.round((f.confidence || 0) * 100);
     ctx.fillStyle = ctx.strokeStyle;
     ctx.fillRect(x, y + h - 28, w, 28);
@@ -234,7 +234,7 @@ function handleResult(data) {
     const type = isIn ? 'checkin' : 'checkout';
     const verb = isIn ? 'Checked In' : 'Checked Out';
     const icon = isIn ? '&#10003;' : '&#128682;';
-    let sub = (recorded.full_name || recorded.employee_id) + ' — ' + (recorded.department || '');
+    let sub = (recorded.full_name || recorded.user_id) + ' — ' + (recorded.department || '');
     if (!isIn && recorded.worked_hours != null) {
       sub += ' · Session: ' + fmtHms(recorded.worked_hours);
       if (recorded.total_hours_today != null)
@@ -247,7 +247,7 @@ function handleResult(data) {
       ? ' <span class="text-gray-500 text-xs">(' + fmtHms(recorded.total_hours_today) + ' today)</span>' : '';
     setLastEvent(
       '<span class="' + (isIn ? 'text-green-400' : 'text-orange-400') + ' font-semibold">' + verb + '</span>' +
-      ' &mdash; <span class="text-white">' + (recorded.full_name || recorded.employee_id) + '</span>' +
+      ' &mdash; <span class="text-white">' + (recorded.full_name || recorded.user_id) + '</span>' +
       hoursNote + ' <span class="text-gray-500 text-xs">' + time + '</span>'
     );
     idleTimer = setTimeout(resetState, IDLE_DELAY);

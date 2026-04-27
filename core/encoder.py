@@ -14,15 +14,15 @@ def encode_image(image_path: str) -> Optional[list]:
 
 
 def build_encodings(active_ids: set[str] = None) -> dict:
-    """Build {employee_id: [encodings]} from disk. If active_ids given, skip inactive."""
+    """Build {user_id: [encodings]} from disk. If active_ids given, skip inactive."""
     known = {}
     if not os.path.isdir(KNOWN_FACES_DIR):
         return known
 
-    for employee_id in os.listdir(KNOWN_FACES_DIR):
-        if active_ids is not None and employee_id not in active_ids:
+    for user_id in os.listdir(KNOWN_FACES_DIR):
+        if active_ids is not None and user_id not in active_ids:
             continue
-        folder = os.path.join(KNOWN_FACES_DIR, employee_id)
+        folder = os.path.join(KNOWN_FACES_DIR, user_id)
         if not os.path.isdir(folder):
             continue
         encodings = []
@@ -33,7 +33,7 @@ def build_encodings(active_ids: set[str] = None) -> dict:
             if enc is not None:
                 encodings.append(enc)
         if encodings:
-            known[employee_id] = encodings
+            known[user_id] = encodings
 
     save_encodings(known)
     return known
@@ -52,7 +52,7 @@ def load_encodings() -> dict:
         return pickle.load(f)
 
 
-def add_employee_encodings(employee_id: str, image_paths: list[str]) -> int:
+def add_user_encodings(user_id: str, image_paths: list[str]) -> int:
     known = load_encodings()
     new_encodings = []
     for path in image_paths:
@@ -60,14 +60,14 @@ def add_employee_encodings(employee_id: str, image_paths: list[str]) -> int:
         if enc is not None:
             new_encodings.append(enc)
     if new_encodings:
-        existing = known.get(employee_id, [])
-        known[employee_id] = existing + new_encodings
+        existing = known.get(user_id, [])
+        known[user_id] = existing + new_encodings
         save_encodings(known)
     return len(new_encodings)
 
 
-def remove_employee_encodings(employee_id: str):
+def remove_user_encodings(user_id: str):
     known = load_encodings()
-    if employee_id in known:
-        del known[employee_id]
+    if user_id in known:
+        del known[user_id]
         save_encodings(known)

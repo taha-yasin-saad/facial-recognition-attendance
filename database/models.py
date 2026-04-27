@@ -1,7 +1,7 @@
-CREATE_EMPLOYEES_TABLE = """
-CREATE TABLE IF NOT EXISTS employees (
+CREATE_USERS_TABLE = """
+CREATE TABLE IF NOT EXISTS users (
     id            INTEGER  PRIMARY KEY AUTOINCREMENT,
-    employee_id   TEXT     NOT NULL UNIQUE,
+    user_id       TEXT     NOT NULL UNIQUE,
     full_name     TEXT     NOT NULL,
     department    TEXT     NOT NULL,
     role          TEXT     NOT NULL DEFAULT '',
@@ -15,13 +15,13 @@ CREATE TABLE IF NOT EXISTS employees (
 CREATE_ATTENDANCE_TABLE = """
 CREATE TABLE IF NOT EXISTS attendance (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    employee_id  TEXT    NOT NULL,
+    user_id      TEXT    NOT NULL,
     door_id      TEXT    NOT NULL DEFAULT 'MAIN_ENTRANCE',
     event_type   TEXT    NOT NULL CHECK(event_type IN ('check_in', 'check_out')),
     timestamp    DATETIME DEFAULT CURRENT_TIMESTAMP,
     worked_hours REAL    DEFAULT NULL,
     method       TEXT    NOT NULL DEFAULT 'face_recognition',
-    FOREIGN KEY (employee_id) REFERENCES employees(employee_id)
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
 );
 """
 
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS unknown_logs (
 """
 
 CREATE_ATTENDANCE_IDX = """
-CREATE INDEX IF NOT EXISTS idx_att_emp_ts ON attendance (employee_id, timestamp);
+CREATE INDEX IF NOT EXISTS idx_att_user_ts ON attendance (user_id, timestamp);
 """
 
 CREATE_ATTENDANCE_DATE_IDX = """

@@ -12,7 +12,7 @@ from core.encoder import load_encodings
 
 @dataclass
 class RecognitionResult:
-    employee_id: Optional[str]
+    user_id: Optional[str]
     confidence: float
     location: tuple          # (top, right, bottom, left) — full-scale
     is_known: bool
@@ -22,26 +22,26 @@ class RecognitionResult:
 class FaceDetector:
     def __init__(self):
         self._known: dict = {}
-        self._emp_ids: list[str] = []
+        self._user_ids: list[str] = []
         self._all_encodings: list = []
         self._cooldown_map: dict[str, float] = {}
         self.reload()
 
     def reload(self):
         self._known = load_encodings()
-        self._emp_ids = []
+        self._user_ids = []
         self._all_encodings = []
-        for eid, encs in self._known.items():
+        for uid, encs in self._known.items():
             for enc in encs:
-                self._emp_ids.append(eid)
+                self._user_ids.append(uid)
                 self._all_encodings.append(enc)
 
-    def in_cooldown(self, employee_id: str) -> bool:
-        last = self._cooldown_map.get(employee_id, 0)
+    def in_cooldown(self, user_id: str) -> bool:
+        last = self._cooldown_map.get(user_id, 0)
         return (time.time() - last) < RECOGNITION_COOLDOWN
 
-    def set_cooldown(self, employee_id: str):
-        self._cooldown_map[employee_id] = time.time()
+    def set_cooldown(self, user_id: str):
+        self._cooldown_map[user_id] = time.time()
 
     def process_frame(self, frame: np.ndarray, upsample_times: int = 1) -> list[RecognitionResult]:
         scale = FRAME_RESIZE_SCALE
@@ -71,7 +71,7 @@ class FaceDetector:
 
             if best_dist <= FACE_TOLERANCE:
                 results.append(RecognitionResult(
-                    self._emp_ids[best_idx], confidence, full_loc, True
+                    self._user_ids[best_idx], confidence, full_loc, True
                 ))
             else:
                 results.append(RecognitionResult(None, confidence, full_loc, False))
@@ -91,18 +91,18 @@ class FaceDetector:
             if not r.is_known:
                 color = BOX_COLOR_UNKNOWN
                 label = "Unknown"
-            elif self.in_cooldown(r.employee_id):
+            elif self.in_cooldown(r.user_id):
                 color = BOX_COLOR_COOLDOWN
-                emp = info_map.get(r.employee_id, {})
-                label = emp.get("full_name", r.employee_id)
+                user = info_map.get(r.user_id, {})
+                label = user.get("full_name", r.user_id)
             elif r.event_type == "check_out":
                 color = BOX_COLOR_CHECKOUT
-                emp = info_map.get(r.employee_id, {})
-                label = f"OUT: {emp.get('full_name', r.employee_id)}"
+                user = info_map.get(r.user_id, {})
+                label = f"OUT: {user.get('full_name', r.user_id)}"
             else:
                 color = BOX_COLOR_CHECKIN
-                emp = info_map.get(r.employee_id, {})
-                label = f"IN: {emp.get('full_name', r.employee_id)}"
+                user = info_map.get(r.user_id, {})
+                label = f"IN: {user.get('full_name', r.user_id)}"
 
             cv2.rectangle(out, (left, top), (right, bottom), color, 2)
             cv2.rectangle(out, (left, bottom - 30), (right, bottom), color, cv2.FILLED)

@@ -34,7 +34,7 @@
     <table class="w-full text-sm">
       <thead class="bg-gray-900 text-gray-400 text-xs uppercase">
         <tr>
-          <th class="px-5 py-3 text-left">Employee</th>
+          <th class="px-5 py-3 text-left">User</th>
           <th class="px-5 py-3 text-left">Department</th>
           <th class="px-5 py-3 text-left">Event</th>
           <th class="px-5 py-3 text-left">Timestamp</th>
@@ -47,8 +47,8 @@
         {% for r in rows %}
         <tr class="hover:bg-gray-750 transition">
           <td class="px-5 py-3">
-            <a href="/dashboard/employees/{{ r.employee_id }}" class="text-indigo-400 hover:underline font-medium">{{ r.full_name }}</a>
-            <div class="text-xs text-gray-500">{{ r.employee_id }}</div>
+            <a href="/dashboard/users/{{ r.user_id }}" class="text-indigo-400 hover:underline font-medium">{{ r.full_name }}</a>
+            <div class="text-xs text-gray-500">{{ r.user_id }}</div>
           </td>
           <td class="px-5 py-3 text-gray-300">{{ r.department }}</td>
           <td class="px-5 py-3">

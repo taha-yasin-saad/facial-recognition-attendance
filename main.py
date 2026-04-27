@@ -14,11 +14,11 @@ def _hms(decimal_hours) -> str:
 from config import CAMERA_INDEX, CAMERA_WIDTH, CAMERA_HEIGHT, CAMERA_FPS, DISPLAY_SCALE
 from core.detector import FaceDetector
 from core.attendance import AttendanceManager
-from database.db import init_db, get_all_employees
+from database.db import init_db, get_all_users
 
 
-def build_info_map(employees: list[dict]) -> dict[str, dict]:
-    return {e["employee_id"]: e for e in employees}
+def build_info_map(users: list[dict]) -> dict[str, dict]:
+    return {u["user_id"]: u for u in users}
 
 
 def open_camera(source) -> cv2.VideoCapture:
@@ -39,8 +39,8 @@ def run():
     init_db()
     detector = FaceDetector()
     manager = AttendanceManager()
-    employees = get_all_employees(active_only=True)
-    info_map = build_info_map(employees)
+    users = get_all_users(active_only=True)
+    info_map = build_info_map(users)
 
     cap = open_camera(CAMERA_INDEX)
     print("[INFO] Face Recognition Attendance — Q: quit  R: reload encodings")
@@ -66,18 +66,17 @@ def run():
 
             for r in last_results:
                 if r.is_known:
-                    if not detector.in_cooldown(r.employee_id):
-                        info = manager.process_recognition(r.employee_id)
+                    if not detector.in_cooldown(r.user_id):
+                        info = manager.process_recognition(r.user_id)
                         if info:
-                            detector.set_cooldown(r.employee_id)
+                            detector.set_cooldown(r.user_id)
                             r.event_type = info.get("event_type")
                             hours_str = f" — {_hms(info.get('worked_hours'))}" if info.get("worked_hours") else ""
                             print(
                                 f"[{info['event_type'].upper()}] {info['full_name']} "
-                                f"({info['employee_id']}) {info['timestamp']}{hours_str}"
+                                f"({info['user_id']}) {info['timestamp']}{hours_str}"
                             )
                 else:
-                    # Rate-limit unknown face snapshots to once per 30s per screen region
                     top, right, bottom, left = r.location
                     region_key = f"{left//100}_{top//100}"
                     last_logged = unknown_throttle.get(region_key, 0)
@@ -110,9 +109,9 @@ def run():
         elif key == ord("r"):
             print("[INFO] Reloading encodings...")
             detector.reload()
-            employees = get_all_employees(active_only=True)
-            info_map = build_info_map(employees)
-            print(f"[INFO] {len(info_map)} active employees loaded")
+            users = get_all_users(active_only=True)
+            info_map = build_info_map(users)
+            print(f"[INFO] {len(info_map)} active users loaded")
 
     cap.release()
     cv2.destroyAllWindows()

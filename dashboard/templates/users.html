@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Employees{% endblock %}
-{% block page_title %}Employee Management{% endblock %}
+{% block title %}Users{% endblock %}
+{% block page_title %}User Management{% endblock %}
 
 {% block content %}
 
@@ -19,24 +19,24 @@
       <option value="0" {% if active_filter == '0' %}selected{% endif %}>Inactive</option>
     </select>
     <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-medium">Filter</button>
-    <a href="/dashboard/employees" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm">Reset</a>
+    <a href="/dashboard/users" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm">Reset</a>
   </form>
-  <a href="/dashboard/employees/add"
+  <a href="/dashboard/users/add"
      class="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg text-sm font-medium">
-    ＋ Add Employee
+    ＋ Add User
   </a>
 </div>
 
 <!-- Table -->
 <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
   <div class="px-5 py-3 border-b border-gray-700 text-xs text-gray-400">
-    Showing {{ employees|length }} of {{ total }} employees
+    Showing {{ users|length }} of {{ total }} users
   </div>
   <div class="overflow-x-auto">
     <table class="w-full text-sm">
       <thead class="bg-gray-900 text-gray-400 text-xs uppercase">
         <tr>
-          <th class="px-5 py-3 text-left">Employee</th>
+          <th class="px-5 py-3 text-left">User</th>
           <th class="px-5 py-3 text-left">Department</th>
           <th class="px-5 py-3 text-left">Role</th>
           <th class="px-5 py-3 text-left">Status</th>
@@ -45,31 +45,31 @@
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-700">
-        {% for e in employees %}
+        {% for u in users %}
         <tr class="hover:bg-gray-750 transition">
           <td class="px-5 py-3">
-            <a href="/dashboard/employees/{{ e.employee_id }}" class="font-medium text-indigo-400 hover:underline">{{ e.full_name }}</a>
-            <div class="text-xs text-gray-500">{{ e.employee_id }}{% if e.email %} · {{ e.email }}{% endif %}</div>
+            <a href="/dashboard/users/{{ u.user_id }}" class="font-medium text-indigo-400 hover:underline">{{ u.full_name }}</a>
+            <div class="text-xs text-gray-500">{{ u.user_id }}{% if u.email %} · {{ u.email }}{% endif %}</div>
           </td>
-          <td class="px-5 py-3 text-gray-300">{{ e.department }}</td>
-          <td class="px-5 py-3 text-gray-400">{{ e.role or '—' }}</td>
+          <td class="px-5 py-3 text-gray-300">{{ u.department }}</td>
+          <td class="px-5 py-3 text-gray-400">{{ u.role or '—' }}</td>
           <td class="px-5 py-3">
-            {% if e.is_active %}
+            {% if u.is_active %}
               <span class="px-2 py-0.5 rounded-full bg-green-900 text-green-300 text-xs">Active</span>
             {% else %}
               <span class="px-2 py-0.5 rounded-full bg-gray-700 text-gray-400 text-xs">Inactive</span>
             {% endif %}
           </td>
-          <td class="px-5 py-3 text-gray-400 text-xs">{{ e.registered_at[:10] }}</td>
+          <td class="px-5 py-3 text-gray-400 text-xs">{{ u.registered_at[:10] }}</td>
           <td class="px-5 py-3 text-right">
             <div class="flex gap-2 justify-end">
-              <a href="/dashboard/employees/{{ e.employee_id }}"
+              <a href="/dashboard/users/{{ u.user_id }}"
                  class="px-3 py-1 rounded bg-indigo-700 hover:bg-indigo-600 text-xs">View</a>
-              {% if e.is_active %}
-              <button onclick="openModal('Deactivate Employee', 'Deactivate {{ e.full_name }}? They will no longer be recognized.', '/dashboard/employees/{{ e.employee_id }}/deactivate')"
+              {% if u.is_active %}
+              <button onclick="openModal('Deactivate User', 'Deactivate {{ u.full_name }}? They will no longer be recognized.', '/dashboard/users/{{ u.user_id }}/deactivate')"
                       class="px-3 py-1 rounded bg-gray-700 hover:bg-red-800 text-xs">Deactivate</button>
               {% else %}
-              <form method="POST" action="/dashboard/employees/{{ e.employee_id }}/activate" class="inline">
+              <form method="POST" action="/dashboard/users/{{ u.user_id }}/activate" class="inline">
                 <button type="submit" class="px-3 py-1 rounded bg-gray-700 hover:bg-green-800 text-xs">Activate</button>
               </form>
               {% endif %}
@@ -77,7 +77,7 @@
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="6" class="px-5 py-10 text-center text-gray-500">No employees found.</td></tr>
+        <tr><td colspan="6" class="px-5 py-10 text-center text-gray-500">No users found.</td></tr>
         {% endfor %}
       </tbody>
     </table>

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Add Employee{% endblock %}
-{% block page_title %}Add New Employee{% endblock %}
+{% block title %}Add User{% endblock %}
+{% block page_title %}Add New User{% endblock %}
 
 {% block content %}
 <div class="max-w-3xl mx-auto">
@@ -9,13 +9,13 @@
 
       <!-- Left: form fields -->
       <div class="bg-gray-800 rounded-xl border border-gray-700 p-6 space-y-4">
-        <h2 class="text-sm font-semibold text-gray-300 mb-2">Employee Details</h2>
+        <h2 class="text-sm font-semibold text-gray-300 mb-2">User Details</h2>
 
         <div>
-          <label class="block text-xs text-gray-400 mb-1">Employee ID *</label>
-          <input type="text" name="employee_id" required
+          <label class="block text-xs text-gray-400 mb-1">User ID *</label>
+          <input type="text" name="user_id" required
                  class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500"
-                 placeholder="EMP001" />
+                 placeholder="USR001" />
         </div>
         <div>
           <label class="block text-xs text-gray-400 mb-1">Full Name *</label>
@@ -74,10 +74,10 @@
     </div>
 
     <div class="mt-5 flex gap-3 justify-end">
-      <a href="/dashboard/employees" class="px-5 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm">Cancel</a>
+      <a href="/dashboard/users" class="px-5 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm">Cancel</a>
       <button type="submit" id="submit-btn" disabled
               class="px-5 py-2 bg-green-600 hover:bg-green-500 rounded-lg text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed">
-        <span id="submit-label">Register Employee</span>
+        <span id="submit-label">Register User</span>
       </button>
     </div>
 

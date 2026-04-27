@@ -1,9 +1,9 @@
 """
-Register a new employee by capturing photos from the webcam.
+Register a new user by capturing photos from the webcam.
 
 Usage:
     python scripts/register_employee.py \
-        --id EMP001 --name "Ahmed Al Mansouri" \
+        --id USR001 --name "Ahmed Al Mansouri" \
         --dept "IT" --role "Engineer" --email "ahmed@university.ae"
 """
 import argparse
@@ -16,17 +16,17 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import cv2
 
 from config import CAMERA_INDEX, KNOWN_FACES_DIR, REGISTRATION_PHOTOS, REGISTRATION_INTERVAL
-from core.encoder import add_employee_encodings
-from database.db import init_db, add_employee, get_employee
+from core.encoder import add_user_encodings
+from database.db import init_db, add_user, get_user
 
 
-def capture_photos(employee_id: str, count: int, interval: float) -> list[str]:
+def capture_photos(user_id: str, count: int, interval: float) -> list[str]:
     cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_DSHOW)
     if not cap.isOpened():
         print("[ERROR] Cannot open camera.")
         sys.exit(1)
 
-    save_dir = os.path.join(KNOWN_FACES_DIR, employee_id)
+    save_dir = os.path.join(KNOWN_FACES_DIR, user_id)
     os.makedirs(save_dir, exist_ok=True)
 
     paths = []
@@ -61,8 +61,8 @@ def capture_photos(employee_id: str, count: int, interval: float) -> list[str]:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Register an employee face")
-    parser.add_argument("--id", required=True, dest="employee_id", help="Unique employee ID")
+    parser = argparse.ArgumentParser(description="Register a new user face")
+    parser.add_argument("--id", required=True, dest="user_id", help="Unique user ID")
     parser.add_argument("--name", required=True, help="Full name")
     parser.add_argument("--dept", required=True, help="Department")
     parser.add_argument("--role", default="", help="Job role/title")
@@ -73,23 +73,23 @@ def main():
 
     init_db()
 
-    if get_employee(args.employee_id):
-        print(f"[ERROR] Employee {args.employee_id} already exists.")
+    if get_user(args.user_id):
+        print(f"[ERROR] User {args.user_id} already exists.")
         sys.exit(1)
 
-    photos = capture_photos(args.employee_id, args.photos, REGISTRATION_INTERVAL)
+    photos = capture_photos(args.user_id, args.photos, REGISTRATION_INTERVAL)
     if not photos:
         print("[ERROR] No photos captured. Aborting.")
         sys.exit(1)
 
     photo_path = photos[0]
-    ok = add_employee(args.employee_id, args.name, args.dept, args.role, args.email, photo_path)
+    ok = add_user(args.user_id, args.name, args.dept, args.role, args.email, photo_path)
     if not ok:
-        print("[ERROR] Failed to insert employee record.")
+        print("[ERROR] Failed to insert user record.")
         sys.exit(1)
 
-    encoded = add_employee_encodings(args.employee_id, photos)
-    print(f"\n[OK] Registered {args.name} ({args.employee_id})")
+    encoded = add_user_encodings(args.user_id, photos)
+    print(f"\n[OK] Registered {args.name} ({args.user_id})")
     print(f"     Photos: {len(photos)}  |  Faces encoded: {encoded}")
     if encoded == 0:
         print("[WARN] No faces detected — re-run in better lighting.")

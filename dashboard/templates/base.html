@@ -31,8 +31,8 @@
     </div>
     <nav class="flex-1 px-3 py-4 space-y-1">
       {% set nav = [
-        ('/dashboard',             '📊', 'Dashboard'),
-        ('/dashboard/employees',   '👥', 'Employees'),
+        ('/dashboard',         '📊', 'Dashboard'),
+        ('/dashboard/users',   '👥', 'Users'),
         ('/dashboard/attendance',  '📋', 'Attendance Log'),
         ('/dashboard/reports',     '📈', 'Reports'),
         ('/dashboard/guests',      '👤', 'Guests'),
@@ -121,10 +121,10 @@
   // URL param toasts
   const params = new URLSearchParams(location.search);
   if (params.get('saved'))       showToast('Changes saved.');
-  if (params.get('deactivated')) showToast('Employee deactivated.', 'error');
-  if (params.get('activated'))   showToast('Employee activated.');
-  if (params.get('deleted'))     showToast('Employee deleted.', 'error');
-  if (params.get('registered'))  showToast('Employee registered successfully.');
+  if (params.get('deactivated')) showToast('User deactivated.', 'error');
+  if (params.get('activated'))   showToast('User activated.');
+  if (params.get('deleted'))     showToast('User deleted.', 'error');
+  if (params.get('registered'))  showToast('User registered successfully.');
 </script>
 
 {% block scripts %}{% endblock %}

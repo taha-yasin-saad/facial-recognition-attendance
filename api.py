@@ -17,19 +17,19 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
 from config import API_HOST, API_PORT, KNOWN_FACES_DIR, DASHBOARD_AUTO_REFRESH_SECONDS, KIOSK_FRAME_WIDTH
-from core.encoder import build_encodings, add_employee_encodings, remove_employee_encodings
+from core.encoder import build_encodings, add_user_encodings, remove_user_encodings
 from core.detector import FaceDetector
 from core.attendance import AttendanceManager
 from database.db import (
     init_db,
-    add_employee, get_employee, get_all_employees,
-    update_employee, set_employee_active, delete_employee,
-    get_active_employee_ids, get_departments,
+    add_user, get_user, get_all_users,
+    update_user, set_user_active, delete_user,
+    get_active_user_ids, get_departments,
     get_attendance_log, get_present_now, get_stats_today,
     get_hourly_checkins, get_monthly_report, get_monthly_daily_counts,
-    get_dept_monthly_hours, get_employee_attendance_history,
-    get_employee_monthly_hours, get_employee_total_hours_alltime,
-    get_employee_total_days_alltime,
+    get_dept_monthly_hours, get_user_attendance_history,
+    get_user_monthly_hours, get_user_total_hours_alltime,
+    get_user_total_days_alltime,
     record_checkin, record_checkout, get_checkin_record_today,
     get_unknown_logs, get_unknown_log, mark_unknown_registered, next_guest_id,
 )
@@ -91,37 +91,37 @@ def _today() -> str:
 # REST API — /api/...
 # ══════════════════════════════════════════════════════════════════════════════
 
-# ── Employees ─────────────────────────────────────────────────────────────────
+# ── Users ──────────────────────────────────────────────────────────────────────
 
-@app.get("/api/employees")
-def api_list_employees(
+@app.get("/api/users")
+def api_list_users(
     dept: Optional[str] = Query(None),
     active: Optional[bool] = Query(None),
 ):
-    return get_all_employees(department=dept, active_only=active)
+    return get_all_users(department=dept, active_only=active)
 
 
-@app.get("/api/employees/{employee_id}")
-def api_get_employee(employee_id: str):
-    emp = get_employee(employee_id)
-    if not emp:
-        raise HTTPException(404, "Employee not found")
-    return emp
+@app.get("/api/users/{user_id}")
+def api_get_user(user_id: str):
+    user = get_user(user_id)
+    if not user:
+        raise HTTPException(404, "User not found")
+    return user
 
 
-@app.post("/api/employees/register", status_code=201)
-async def api_register_employee(
-    employee_id: str = Form(...),
+@app.post("/api/users/register", status_code=201)
+async def api_register_user(
+    user_id: str = Form(...),
     full_name: str = Form(...),
     department: str = Form(...),
     role: str = Form(""),
     email: str = Form(""),
     photos: list[UploadFile] = File(...),
 ):
-    if get_employee(employee_id):
-        raise HTTPException(409, "Employee ID already exists")
+    if get_user(user_id):
+        raise HTTPException(409, "User ID already exists")
 
-    save_dir = os.path.join(KNOWN_FACES_DIR, employee_id)
+    save_dir = os.path.join(KNOWN_FACES_DIR, user_id)
     os.makedirs(save_dir, exist_ok=True)
 
     saved_paths = []
@@ -133,64 +133,62 @@ async def api_register_employee(
         saved_paths.append(path)
 
     photo_path = saved_paths[0] if saved_paths else None
-    ok = add_employee(employee_id, full_name, department, role, email, photo_path)
+    ok = add_user(user_id, full_name, department, role, email, photo_path)
     if not ok:
-        raise HTTPException(500, "Failed to insert employee record")
+        raise HTTPException(500, "Failed to insert user record")
 
-    encoded = add_employee_encodings(employee_id, saved_paths)
+    encoded = add_user_encodings(user_id, saved_paths)
     return {
-        "employee_id": employee_id,
+        "user_id": user_id,
         "full_name": full_name,
         "photos_saved": len(saved_paths),
         "faces_encoded": encoded,
     }
 
 
-class EmployeeUpdate(BaseModel):
+class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     department: Optional[str] = None
     role: Optional[str] = None
     email: Optional[str] = None
 
 
-@app.patch("/api/employees/{employee_id}")
-def api_update_employee(employee_id: str, body: EmployeeUpdate):
-    if not get_employee(employee_id):
-        raise HTTPException(404, "Employee not found")
-    update_employee(employee_id, **body.model_dump(exclude_none=True))
-    return get_employee(employee_id)
+@app.patch("/api/users/{user_id}")
+def api_update_user(user_id: str, body: UserUpdate):
+    if not get_user(user_id):
+        raise HTTPException(404, "User not found")
+    update_user(user_id, **body.model_dump(exclude_none=True))
+    return get_user(user_id)
 
 
 class StatusBody(BaseModel):
     is_active: bool
 
 
-@app.patch("/api/employees/{employee_id}/status")
-def api_set_status(employee_id: str, body: StatusBody):
-    if not get_employee(employee_id):
-        raise HTTPException(404, "Employee not found")
-    set_employee_active(employee_id, body.is_active)
+@app.patch("/api/users/{user_id}/status")
+def api_set_status(user_id: str, body: StatusBody):
+    if not get_user(user_id):
+        raise HTTPException(404, "User not found")
+    set_user_active(user_id, body.is_active)
     if not body.is_active:
-        # Remove from encodings so deactivated employees aren't recognized
-        remove_employee_encodings(employee_id)
+        remove_user_encodings(user_id)
     else:
-        # Re-add encodings from disk
-        face_dir = os.path.join(KNOWN_FACES_DIR, employee_id)
+        face_dir = os.path.join(KNOWN_FACES_DIR, user_id)
         if os.path.isdir(face_dir):
             paths = [
                 os.path.join(face_dir, f) for f in os.listdir(face_dir)
                 if f.lower().endswith((".jpg", ".jpeg", ".png"))
             ]
-            add_employee_encodings(employee_id, paths)
-    return get_employee(employee_id)
+            add_user_encodings(user_id, paths)
+    return get_user(user_id)
 
 
-@app.delete("/api/employees/{employee_id}", status_code=204)
-def api_delete_employee(employee_id: str):
-    if not get_employee(employee_id):
-        raise HTTPException(404, "Employee not found")
-    remove_employee_encodings(employee_id)
-    delete_employee(employee_id)
+@app.delete("/api/users/{user_id}", status_code=204)
+def api_delete_user(user_id: str):
+    if not get_user(user_id):
+        raise HTTPException(404, "User not found")
+    remove_user_encodings(user_id)
+    delete_user(user_id)
 
 
 # ── Attendance ─────────────────────────────────────────────────────────────────
@@ -225,11 +223,11 @@ def api_monthly_daily(month: str = Query(default=None)):
     return get_monthly_daily_counts(month or _current_month())
 
 
-@app.get("/api/attendance/{employee_id}")
-def api_employee_history(employee_id: str, limit: int = Query(60)):
-    if not get_employee(employee_id):
-        raise HTTPException(404, "Employee not found")
-    return get_employee_attendance_history(employee_id, limit=limit)
+@app.get("/api/attendance/{user_id}")
+def api_user_history(user_id: str, limit: int = Query(60)):
+    if not get_user(user_id):
+        raise HTTPException(404, "User not found")
+    return get_user_attendance_history(user_id, limit=limit)
 
 
 @app.get("/api/attendance/export")
@@ -240,7 +238,7 @@ def api_export_csv(
     rows = get_attendance_log(date_from=date_from, date_to=date_to, limit=10000)
     buf = io.StringIO()
     writer = csv.DictWriter(buf, fieldnames=[
-        "id", "employee_id", "full_name", "department", "role",
+        "id", "user_id", "full_name", "department", "role",
         "event_type", "timestamp", "worked_hours", "door_id", "method",
     ])
     writer.writeheader()
@@ -258,9 +256,9 @@ def api_export_csv(
 
 @app.post("/api/encodings/rebuild")
 def api_rebuild():
-    active_ids = get_active_employee_ids()
+    active_ids = get_active_user_ids()
     known = build_encodings(active_ids=active_ids)
-    return {"employees_encoded": len(known)}
+    return {"users_encoded": len(known)}
 
 
 # ── Health ────────────────────────────────────────────────────────────────────
@@ -288,23 +286,23 @@ def _run_kiosk_recognition(image_bytes: bytes) -> dict:
             faces.append({"is_known": False, "confidence": round(r.confidence, 3), "location": loc})
             continue
 
-        in_cooldown = detector.in_cooldown(r.employee_id)
-        emp = get_employee(r.employee_id)
+        in_cooldown = detector.in_cooldown(r.user_id)
+        user = get_user(r.user_id)
         face: dict = {
             "is_known": True,
-            "employee_id": r.employee_id,
-            "full_name": emp["full_name"] if emp else r.employee_id,
-            "department": emp["department"] if emp else "",
-            "role": emp["role"] if emp else "",
+            "user_id": r.user_id,
+            "full_name": user["full_name"] if user else r.user_id,
+            "department": user["department"] if user else "",
+            "role": user["role"] if user else "",
             "confidence": round(r.confidence, 3),
             "in_cooldown": in_cooldown,
             "location": loc,
         }
 
         if not in_cooldown:
-            event = _kiosk_attendance.process_recognition(r.employee_id)
+            event = _kiosk_attendance.process_recognition(r.user_id)
             if event:
-                detector.set_cooldown(r.employee_id)
+                detector.set_cooldown(r.user_id)
                 face.update(event)
                 face["recorded"] = True
             else:
@@ -327,7 +325,7 @@ async def api_kiosk_recognize(frame: UploadFile = File(...)):
 def api_kiosk_reload():
     global _kiosk_detector
     _kiosk_detector = FaceDetector()
-    return {"status": "reloaded", "employees": len(_kiosk_detector._emp_ids)}
+    return {"status": "reloaded", "users": len(_kiosk_detector._user_ids)}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -359,8 +357,8 @@ def dash_home(request: Request):
     })
 
 
-@app.get("/dashboard/employees", response_class=HTMLResponse)
-def dash_employees(
+@app.get("/dashboard/users", response_class=HTMLResponse)
+def dash_users(
     request: Request,
     dept: Optional[str] = Query(None),
     active: Optional[str] = Query(None),
@@ -373,25 +371,25 @@ def dash_employees(
     elif active == "0":
         active_filter = False
 
-    employees = get_all_employees(department=dept, active_only=active_filter)
+    users = get_all_users(department=dept, active_only=active_filter)
     if q:
         q_lower = q.lower()
-        employees = [
-            e for e in employees
-            if q_lower in e["full_name"].lower()
-            or q_lower in e["employee_id"].lower()
-            or q_lower in e["email"].lower()
+        users = [
+            u for u in users
+            if q_lower in u["full_name"].lower()
+            or q_lower in u["user_id"].lower()
+            or q_lower in u["email"].lower()
         ]
 
     per_page = 20
-    total = len(employees)
+    total = len(users)
     total_pages = max(1, (total + per_page - 1) // per_page)
     page = max(1, min(page, total_pages))
-    paged = employees[(page - 1) * per_page: page * per_page]
+    paged = users[(page - 1) * per_page: page * per_page]
     departments = get_departments()
 
-    return templates.TemplateResponse(request, "employees.html", {
-        "employees": paged,
+    return templates.TemplateResponse(request, "users.html", {
+        "users": paged,
         "total": total,
         "page": page,
         "total_pages": total_pages,
@@ -402,29 +400,28 @@ def dash_employees(
     })
 
 
-@app.get("/dashboard/employees/add", response_class=HTMLResponse)
-def dash_add_employee(request: Request):
+@app.get("/dashboard/users/add", response_class=HTMLResponse)
+def dash_add_user(request: Request):
     departments = get_departments()
-    return templates.TemplateResponse(request, "employee_add.html", {
+    return templates.TemplateResponse(request, "user_add.html", {
         "departments": departments,
     })
 
 
-@app.get("/dashboard/employees/{employee_id}", response_class=HTMLResponse)
-def dash_employee_detail(request: Request, employee_id: str):
-    emp = get_employee(employee_id)
-    if not emp:
-        raise HTTPException(404, "Employee not found")
-    history = get_employee_attendance_history(employee_id, limit=60)
-    monthly_hours = list(reversed(get_employee_monthly_hours(employee_id, months=6)))
+@app.get("/dashboard/users/{user_id}", response_class=HTMLResponse)
+def dash_user_detail(request: Request, user_id: str):
+    user = get_user(user_id)
+    if not user:
+        raise HTTPException(404, "User not found")
+    history = get_user_attendance_history(user_id, limit=60)
+    monthly_hours = list(reversed(get_user_monthly_hours(user_id, months=6)))
     departments = get_departments()
 
-    # Use dedicated all-time queries — not the limited history slice
-    total_days = get_employee_total_days_alltime(employee_id)
-    total_hours = get_employee_total_hours_alltime(employee_id)
+    total_days = get_user_total_days_alltime(user_id)
+    total_hours = get_user_total_hours_alltime(user_id)
 
-    return templates.TemplateResponse(request, "employee_detail.html", {
-        "emp": emp,
+    return templates.TemplateResponse(request, "user_detail.html", {
+        "user": user,
         "history": history,
         "monthly_hours": monthly_hours,
         "departments": departments,
@@ -479,7 +476,7 @@ def dash_reports(
     total_active = len(report)
     avg_days = round(sum(r["days_present"] or 0 for r in report) / max(total_active, 1), 1)
 
-    top_emp = max(report, key=lambda r: r["total_hours"] or 0) if report else None
+    top_user = max(report, key=lambda r: r["total_hours"] or 0) if report else None
 
     return templates.TemplateResponse(request, "reports.html", {
         "month": target_month,
@@ -488,58 +485,58 @@ def dash_reports(
         "dept_hours": dept_hours,
         "total_hours": total_hours,
         "avg_days": avg_days,
-        "top_emp": top_emp,
+        "top_user": top_user,
     })
 
 
 # ── Dashboard form actions ────────────────────────────────────────────────────
 
-@app.post("/dashboard/employees/{employee_id}/edit")
-async def dash_edit_employee(
-    employee_id: str,
+@app.post("/dashboard/users/{user_id}/edit")
+async def dash_edit_user(
+    user_id: str,
     full_name: str = Form(...),
     department: str = Form(...),
     role: str = Form(""),
     email: str = Form(""),
 ):
-    if not get_employee(employee_id):
+    if not get_user(user_id):
         raise HTTPException(404)
-    update_employee(employee_id, full_name=full_name, department=department,
-                    role=role, email=email)
-    return RedirectResponse(f"/dashboard/employees/{employee_id}?saved=1", status_code=303)
+    update_user(user_id, full_name=full_name, department=department,
+                role=role, email=email)
+    return RedirectResponse(f"/dashboard/users/{user_id}?saved=1", status_code=303)
 
 
-@app.post("/dashboard/employees/{employee_id}/deactivate")
-def dash_deactivate(employee_id: str):
-    if not get_employee(employee_id):
+@app.post("/dashboard/users/{user_id}/deactivate")
+def dash_deactivate(user_id: str):
+    if not get_user(user_id):
         raise HTTPException(404)
-    set_employee_active(employee_id, False)
-    remove_employee_encodings(employee_id)
-    return RedirectResponse(f"/dashboard/employees/{employee_id}?deactivated=1", status_code=303)
+    set_user_active(user_id, False)
+    remove_user_encodings(user_id)
+    return RedirectResponse(f"/dashboard/users/{user_id}?deactivated=1", status_code=303)
 
 
-@app.post("/dashboard/employees/{employee_id}/activate")
-def dash_activate(employee_id: str):
-    if not get_employee(employee_id):
+@app.post("/dashboard/users/{user_id}/activate")
+def dash_activate(user_id: str):
+    if not get_user(user_id):
         raise HTTPException(404)
-    set_employee_active(employee_id, True)
-    face_dir = os.path.join(KNOWN_FACES_DIR, employee_id)
+    set_user_active(user_id, True)
+    face_dir = os.path.join(KNOWN_FACES_DIR, user_id)
     if os.path.isdir(face_dir):
         paths = [
             os.path.join(face_dir, f) for f in os.listdir(face_dir)
             if f.lower().endswith((".jpg", ".jpeg", ".png"))
         ]
-        add_employee_encodings(employee_id, paths)
-    return RedirectResponse(f"/dashboard/employees/{employee_id}?activated=1", status_code=303)
+        add_user_encodings(user_id, paths)
+    return RedirectResponse(f"/dashboard/users/{user_id}?activated=1", status_code=303)
 
 
-@app.post("/dashboard/employees/{employee_id}/delete")
-def dash_delete(employee_id: str):
-    if not get_employee(employee_id):
+@app.post("/dashboard/users/{user_id}/delete")
+def dash_delete(user_id: str):
+    if not get_user(user_id):
         raise HTTPException(404)
-    remove_employee_encodings(employee_id)
-    delete_employee(employee_id)
-    return RedirectResponse("/dashboard/employees?deleted=1", status_code=303)
+    remove_user_encodings(user_id)
+    delete_user(user_id)
+    return RedirectResponse("/dashboard/users?deleted=1", status_code=303)
 
 
 # ── Guest / Unknown logs ──────────────────────────────────────────────────────
@@ -577,22 +574,21 @@ async def dash_register_guest(
     if not log:
         raise HTTPException(404, "Unknown log not found")
 
-    employee_id = next_guest_id()
+    user_id = next_guest_id()
     snapshot = log.get("snapshot_path")
 
-    ok = add_employee(employee_id, full_name, department="Guest",
-                      role=notes or "Visitor", email="", photo_path=snapshot)
+    ok = add_user(user_id, full_name, department="Guest",
+                  role=notes or "Visitor", email="", photo_path=snapshot)
     if not ok:
         raise HTTPException(500, "Failed to create guest record")
 
     if snapshot and os.path.isfile(snapshot):
-        add_employee_encodings(employee_id, [snapshot])
-        # Reload kiosk detector so the guest is recognized immediately
+        add_user_encodings(user_id, [snapshot])
         global _kiosk_detector
         _kiosk_detector = None
 
-    mark_unknown_registered(log_id, employee_id)
-    return RedirectResponse(f"/dashboard/employees/{employee_id}?registered=1", status_code=303)
+    mark_unknown_registered(log_id, user_id)
+    return RedirectResponse(f"/dashboard/users/{user_id}?registered=1", status_code=303)
 
 
 if __name__ == "__main__":

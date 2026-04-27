@@ -15,7 +15,6 @@
            class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-indigo-500" />
     <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm">Load Report</button>
   </form>
-  {% set month_start = month + '-01' %}
   <a href="/api/attendance/export?from={{ month }}-01&to={{ month }}-31"
      class="ml-auto flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-green-800 rounded-lg text-sm">
     ⬇ Export Monthly CSV
@@ -32,11 +31,11 @@
     <div class="text-xs text-gray-400 mb-1">Avg Days Present</div>
     <div class="text-2xl font-bold text-green-400">{{ avg_days }}</div>
   </div>
-  {% if top_emp %}
+  {% if top_user %}
   <div class="bg-gray-800 rounded-xl border border-gray-700 p-4 col-span-2">
-    <div class="text-xs text-gray-400 mb-1">Top Attendance Employee</div>
-    <div class="text-lg font-bold text-yellow-400">{{ top_emp.full_name }}</div>
-    <div class="text-xs text-gray-500">{{ top_emp.department }} — {{ top_emp.total_hours | hms }} worked</div>
+    <div class="text-xs text-gray-400 mb-1">Top Attendance User</div>
+    <div class="text-lg font-bold text-yellow-400">{{ top_user.full_name }}</div>
+    <div class="text-xs text-gray-500">{{ top_user.department }} — {{ top_user.total_hours | hms }} worked</div>
   </div>
   {% endif %}
 </div>
@@ -53,16 +52,16 @@
   </div>
 </div>
 
-<!-- Per-employee table -->
+<!-- Per-user table -->
 <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
   <div class="px-5 py-4 border-b border-gray-700">
-    <h3 class="text-sm font-semibold text-gray-300">Employee Breakdown — {{ month }}</h3>
+    <h3 class="text-sm font-semibold text-gray-300">User Breakdown — {{ month }}</h3>
   </div>
   <div class="overflow-x-auto">
     <table class="w-full text-sm">
       <thead class="bg-gray-900 text-gray-400 text-xs uppercase">
         <tr>
-          <th class="px-5 py-3 text-left">Employee</th>
+          <th class="px-5 py-3 text-left">User</th>
           <th class="px-5 py-3 text-left">Department</th>
           <th class="px-5 py-3 text-right">Days Present</th>
           <th class="px-5 py-3 text-right">Total Hours</th>
@@ -73,8 +72,8 @@
         {% for r in report %}
         <tr class="hover:bg-gray-750">
           <td class="px-5 py-3">
-            <a href="/dashboard/employees/{{ r.employee_id }}" class="text-indigo-400 hover:underline font-medium">{{ r.full_name }}</a>
-            <div class="text-xs text-gray-500">{{ r.employee_id }}</div>
+            <a href="/dashboard/users/{{ r.user_id }}" class="text-indigo-400 hover:underline font-medium">{{ r.full_name }}</a>
+            <div class="text-xs text-gray-500">{{ r.user_id }}</div>
           </td>
           <td class="px-5 py-3 text-gray-400">{{ r.department }}</td>
           <td class="px-5 py-3 text-right text-gray-300">{{ r.days_present or 0 }}</td>
@@ -125,7 +124,7 @@ new Chart(document.getElementById('dailyChart'), {
   data: {
     labels: dailyData.map(d => d.day),
     datasets: [{
-      label: 'Employees Present',
+      label: 'Users Present',
       data: dailyData.map(d => d.count),
       borderColor: '#22c55e',
       backgroundColor: 'rgba(34,197,94,0.1)',

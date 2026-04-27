@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}{{ emp.full_name }}{% endblock %}
-{% block page_title %}Employee Profile{% endblock %}
+{% block title %}{{ user.full_name }}{% endblock %}
+{% block page_title %}User Profile{% endblock %}
 
 {% block head %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -13,22 +13,22 @@
   <div class="space-y-4">
     <div class="bg-gray-800 rounded-xl border border-gray-700 p-6 text-center">
       <div class="w-24 h-24 rounded-full bg-indigo-900 flex items-center justify-center text-4xl mx-auto mb-3">
-        {{ emp.full_name[0] }}
+        {{ user.full_name[0] }}
       </div>
-      <div class="text-lg font-semibold text-white">{{ emp.full_name }}</div>
-      <div class="text-sm text-gray-400">{{ emp.employee_id }}</div>
+      <div class="text-lg font-semibold text-white">{{ user.full_name }}</div>
+      <div class="text-sm text-gray-400">{{ user.user_id }}</div>
       <div class="mt-1">
-        {% if emp.is_active %}
+        {% if user.is_active %}
           <span class="px-2 py-0.5 rounded-full bg-green-900 text-green-300 text-xs">Active</span>
         {% else %}
           <span class="px-2 py-0.5 rounded-full bg-gray-700 text-gray-400 text-xs">Inactive</span>
         {% endif %}
       </div>
       <div class="mt-4 text-sm text-gray-300 space-y-1 text-left">
-        <div><span class="text-gray-500">Dept:</span> {{ emp.department }}</div>
-        <div><span class="text-gray-500">Role:</span> {{ emp.role or '—' }}</div>
-        <div><span class="text-gray-500">Email:</span> {{ emp.email or '—' }}</div>
-        <div><span class="text-gray-500">Since:</span> {{ emp.registered_at[:10] }}</div>
+        <div><span class="text-gray-500">Dept:</span> {{ user.department }}</div>
+        <div><span class="text-gray-500">Role:</span> {{ user.role or '—' }}</div>
+        <div><span class="text-gray-500">Email:</span> {{ user.email or '—' }}</div>
+        <div><span class="text-gray-500">Since:</span> {{ user.registered_at[:10] }}</div>
       </div>
     </div>
 
@@ -48,15 +48,15 @@
     <div class="bg-gray-800 rounded-xl border border-gray-700 p-4 space-y-2">
       <button onclick="document.getElementById('edit-panel').classList.toggle('hidden')"
               class="w-full px-4 py-2 bg-indigo-700 hover:bg-indigo-600 rounded-lg text-sm">Edit Details</button>
-      {% if emp.is_active %}
-      <button onclick="openModal('Deactivate Employee', 'Deactivate {{ emp.full_name }}? They will no longer be recognized by the system.', '/dashboard/employees/{{ emp.employee_id }}/deactivate')"
+      {% if user.is_active %}
+      <button onclick="openModal('Deactivate User', 'Deactivate {{ user.full_name }}? They will no longer be recognized by the system.', '/dashboard/users/{{ user.user_id }}/deactivate')"
               class="w-full px-4 py-2 bg-gray-700 hover:bg-red-900 rounded-lg text-sm">Deactivate</button>
       {% else %}
-      <form method="POST" action="/dashboard/employees/{{ emp.employee_id }}/activate">
+      <form method="POST" action="/dashboard/users/{{ user.user_id }}/activate">
         <button type="submit" class="w-full px-4 py-2 bg-gray-700 hover:bg-green-900 rounded-lg text-sm">Activate</button>
       </form>
       {% endif %}
-      <button onclick="openModal('Delete Employee', 'Permanently delete {{ emp.full_name }} and all their attendance records? This cannot be undone.', '/dashboard/employees/{{ emp.employee_id }}/delete')"
+      <button onclick="openModal('Delete User', 'Permanently delete {{ user.full_name }} and all their attendance records? This cannot be undone.', '/dashboard/users/{{ user.user_id }}/delete')"
               class="w-full px-4 py-2 bg-gray-700 hover:bg-red-900 rounded-lg text-sm text-red-400">Delete Permanently</button>
     </div>
   </div>
@@ -66,16 +66,16 @@
 
     <!-- Edit panel (hidden by default) -->
     <div id="edit-panel" class="hidden bg-gray-800 rounded-xl border border-indigo-700 p-5">
-      <h3 class="text-sm font-semibold text-indigo-300 mb-4">Edit Employee Details</h3>
-      <form method="POST" action="/dashboard/employees/{{ emp.employee_id }}/edit" class="grid grid-cols-2 gap-3">
+      <h3 class="text-sm font-semibold text-indigo-300 mb-4">Edit User Details</h3>
+      <form method="POST" action="/dashboard/users/{{ user.user_id }}/edit" class="grid grid-cols-2 gap-3">
         <div>
           <label class="text-xs text-gray-400">Full Name</label>
-          <input type="text" name="full_name" value="{{ emp.full_name }}" required
+          <input type="text" name="full_name" value="{{ user.full_name }}" required
                  class="w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100" />
         </div>
         <div>
           <label class="text-xs text-gray-400">Department</label>
-          <input type="text" name="department" value="{{ emp.department }}" required list="dept-edit"
+          <input type="text" name="department" value="{{ user.department }}" required list="dept-edit"
                  class="w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100" />
           <datalist id="dept-edit">
             {% for d in departments %}<option value="{{ d }}">{% endfor %}
@@ -83,12 +83,12 @@
         </div>
         <div>
           <label class="text-xs text-gray-400">Role</label>
-          <input type="text" name="role" value="{{ emp.role }}"
+          <input type="text" name="role" value="{{ user.role }}"
                  class="w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100" />
         </div>
         <div>
           <label class="text-xs text-gray-400">Email</label>
-          <input type="email" name="email" value="{{ emp.email }}"
+          <input type="email" name="email" value="{{ user.email }}"
                  class="w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100" />
         </div>
         <div class="col-span-2 flex gap-3 justify-end mt-1">

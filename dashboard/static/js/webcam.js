@@ -83,7 +83,6 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
   }
 
   const fd = new FormData(form);
-  // Remove the file input placeholder if any; attach blobs as 'photos'
   fd.delete('photos');
   capturedBlobs.forEach((blob, i) => fd.append('photos', blob, `photo_${i + 1}.jpg`));
 
@@ -92,20 +91,20 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
   errEl.classList.add('hidden');
 
   try {
-    const res = await fetch('/api/employees/register', { method: 'POST', body: fd });
+    const res = await fetch('/api/users/register', { method: 'POST', body: fd });
     const data = await res.json();
     if (!res.ok) {
       errEl.textContent = data.detail || 'Registration failed.';
       errEl.classList.remove('hidden');
       submitBtn.disabled = false;
-      label.textContent = 'Register Employee';
+      label.textContent = 'Register User';
     } else {
-      window.location.href = `/dashboard/employees/${data.employee_id}?registered=1`;
+      window.location.href = `/dashboard/users/${data.user_id}?registered=1`;
     }
   } catch (err) {
     errEl.textContent = 'Network error: ' + err.message;
     errEl.classList.remove('hidden');
     submitBtn.disabled = false;
-    label.textContent = 'Register Employee';
+    label.textContent = 'Register User';
   }
 });

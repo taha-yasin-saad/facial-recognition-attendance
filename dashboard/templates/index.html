@@ -12,7 +12,7 @@
 <!-- Stat cards -->
 <div class="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
   {% set cards = [
-    ('Total Employees', stats.total_employees, 'text-indigo-400', '👥'),
+    ('Total Users',     stats.total_users,      'text-indigo-400', '👥'),
     ('Inside Now',      stats.inside,           'text-green-400',  '✅'),
     ('Attended Today',  stats.present,          'text-cyan-400',   '📅'),
     ('On Break / Left', stats.checked_out,      'text-orange-400', '🚪'),
@@ -62,7 +62,7 @@
     <table class="w-full text-sm">
       <thead class="bg-gray-900 text-gray-400 text-xs uppercase">
         <tr>
-          <th class="px-5 py-3 text-left">Employee</th>
+          <th class="px-5 py-3 text-left">User</th>
           <th class="px-5 py-3 text-left">Department</th>
           <th class="px-5 py-3 text-left">Role</th>
           <th class="px-5 py-3 text-left">Check-in Time</th>
@@ -70,17 +70,17 @@
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-700">
-        {% for e in present %}
+        {% for u in present %}
         <tr class="hover:bg-gray-750 transition">
           <td class="px-5 py-3">
-            <a href="/dashboard/employees/{{ e.employee_id }}" class="font-medium text-indigo-400 hover:underline">{{ e.full_name }}</a>
-            <div class="text-xs text-gray-500">{{ e.employee_id }}</div>
+            <a href="/dashboard/users/{{ u.user_id }}" class="font-medium text-indigo-400 hover:underline">{{ u.full_name }}</a>
+            <div class="text-xs text-gray-500">{{ u.user_id }}</div>
           </td>
-          <td class="px-5 py-3 text-gray-300">{{ e.department }}</td>
-          <td class="px-5 py-3 text-gray-400">{{ e.role }}</td>
-          <td class="px-5 py-3 text-gray-300">{{ e.checkin_time[:19] }}</td>
+          <td class="px-5 py-3 text-gray-300">{{ u.department }}</td>
+          <td class="px-5 py-3 text-gray-400">{{ u.role }}</td>
+          <td class="px-5 py-3 text-gray-300">{{ u.checkin_time[:19] }}</td>
           <td class="px-5 py-3">
-            <span class="inline-block px-2 py-0.5 rounded bg-green-900 text-green-300 text-xs" data-checkin="{{ e.checkin_time }}">—</span>
+            <span class="inline-block px-2 py-0.5 rounded bg-green-900 text-green-300 text-xs" data-checkin="{{ u.checkin_time }}">—</span>
           </td>
         </tr>
         {% endfor %}
