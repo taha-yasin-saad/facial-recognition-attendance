@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Attendance Log{% endblock %}
+{% block page_title %}Attendance Log{% endblock %}
+
+{% block content %}
+
+<!-- Filters -->
+<form method="GET" class="flex flex-wrap gap-3 mb-5">
+  <input type="date" name="date_from" value="{{ date_from }}"
+         class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-indigo-500" />
+  <input type="date" name="date_to" value="{{ date_to }}"
+         class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-indigo-500" />
+  <select name="dept" class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-300">
+    <option value="">All Departments</option>
+    {% for d in departments %}<option value="{{ d }}" {% if d == dept_filter %}selected{% endif %}>{{ d }}</option>{% endfor %}
+  </select>
+  <select name="event_type" class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-300">
+    <option value="">All Events</option>
+    <option value="check_in"  {% if event_filter == 'check_in'  %}selected{% endif %}>Check In</option>
+    <option value="check_out" {% if event_filter == 'check_out' %}selected{% endif %}>Check Out</option>
+  </select>
+  <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm">Filter</button>
+  <a href="/dashboard/attendance" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm">Reset</a>
+
+  <!-- Export CSV -->
+  <a href="/api/attendance/export?from={{ date_from }}&to={{ date_to }}"
+     class="ml-auto flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-green-800 rounded-lg text-sm">
+    ⬇ Export CSV
+  </a>
+</form>
+
+<div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-900 text-gray-400 text-xs uppercase">
+        <tr>
+          <th class="px-5 py-3 text-left">Employee</th>
+          <th class="px-5 py-3 text-left">Department</th>
+          <th class="px-5 py-3 text-left">Event</th>
+          <th class="px-5 py-3 text-left">Timestamp</th>
+          <th class="px-5 py-3 text-left">Hours Worked</th>
+          <th class="px-5 py-3 text-left">Door</th>
+          <th class="px-5 py-3 text-left">Method</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-700">
+        {% for r in rows %}
+        <tr class="hover:bg-gray-750 transition">
+          <td class="px-5 py-3">
+            <a href="/dashboard/employees/{{ r.employee_id }}" class="text-indigo-400 hover:underline font-medium">{{ r.full_name }}</a>
+            <div class="text-xs text-gray-500">{{ r.employee_id }}</div>
+          </td>
+          <td class="px-5 py-3 text-gray-300">{{ r.department }}</td>
+          <td class="px-5 py-3">
+            {% if r.event_type == 'check_in' %}
+              <span class="px-2 py-0.5 rounded bg-green-900 text-green-300 text-xs">Check In</span>
+            {% else %}
+              <span class="px-2 py-0.5 rounded bg-orange-900 text-orange-300 text-xs">Check Out</span>
+            {% endif %}
+          </td>
+          <td class="px-5 py-3 text-gray-300 text-xs">{{ r.timestamp[:19] }}</td>
+          <td class="px-5 py-3 text-gray-400">{{ r.worked_hours | hms }}</td>
+          <td class="px-5 py-3 text-gray-500 text-xs">{{ r.door_id }}</td>
+          <td class="px-5 py-3 text-gray-500 text-xs">{{ r.method }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="px-5 py-10 text-center text-gray-500">No records match the current filters.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div class="px-5 py-3 border-t border-gray-700 flex items-center justify-between text-xs text-gray-400">
+    <span>Page {{ page }}</span>
+    <div class="flex gap-2">
+      {% if page > 1 %}
+        <a href="?page={{ page - 1 }}&date_from={{ date_from }}&date_to={{ date_to }}&dept={{ dept_filter }}&event_type={{ event_filter }}"
+           class="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600">← Prev</a>
+      {% endif %}
+      {% if has_next %}
+        <a href="?page={{ page + 1 }}&date_from={{ date_from }}&date_to={{ date_to }}&dept={{ dept_filter }}&event_type={{ event_filter }}"
+           class="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600">Next →</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kiosk — UniAttend</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class', theme: { extend: { colors: { brand: { DEFAULT: '#6366f1', dark: '#4f46e5' } } } } }
+  </script>
+  <style>
+    #video-wrap { position: relative; }
+    #overlay    { position: absolute; top: 0; left: 0; pointer-events: none; }
+    .result-enter { animation: slideUp .35s ease; }
+    @keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+  </style>
+</head>
+<body class="dark h-full bg-gray-950 text-gray-100 font-sans flex flex-col select-none">
+
+<!-- Top bar -->
+<header class="flex items-center justify-between px-8 py-4 bg-gray-900 border-b border-gray-800 flex-shrink-0">
+  <a href="/dashboard" class="text-2xl font-bold text-indigo-400 tracking-tight">UniAttend</a>
+  <span class="text-sm font-semibold text-indigo-300 uppercase tracking-widest">Kiosk Mode</span>
+  <div class="flex items-center gap-4">
+    <button onclick="reloadEncodings()" title="Reload face encodings"
+            class="text-xs px-3 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 transition">
+      Reload
+    </button>
+    <span class="text-sm text-gray-400 tabular-nums" id="clock"></span>
+  </div>
+</header>
+
+<!-- Main layout -->
+<div class="flex flex-1 overflow-hidden gap-0">
+
+  <!-- Camera panel -->
+  <div class="flex-1 flex flex-col items-center justify-center bg-gray-950 p-6">
+    <div id="video-wrap" class="rounded-2xl overflow-hidden shadow-2xl border border-gray-800 max-w-2xl w-full">
+      <video id="video" autoplay playsinline muted class="w-full block bg-black"></video>
+      <canvas id="overlay" class="w-full"></canvas>
+    </div>
+    <p class="mt-4 text-sm text-gray-600" id="cam-status">Requesting camera access...</p>
+  </div>
+
+  <!-- Status panel -->
+  <div class="w-96 flex-shrink-0 flex flex-col bg-gray-900 border-l border-gray-800 p-6 gap-4">
+
+    <!-- State card -->
+    <div id="state-card" class="flex-1 flex flex-col items-center justify-center rounded-2xl border border-gray-700 bg-gray-800 p-8 text-center transition-all">
+      <div id="state-icon" class="text-7xl mb-4">&#128065;</div>
+      <div id="state-title" class="text-xl font-bold text-gray-200 mb-2">Ready</div>
+      <div id="state-sub" class="text-sm text-gray-400">Stand in front of the camera</div>
+    </div>
+
+    <!-- Last event log -->
+    <div class="bg-gray-800 rounded-xl border border-gray-700 p-4">
+      <p class="text-xs text-gray-500 uppercase tracking-wide mb-3">Last Event</p>
+      <div id="last-event" class="text-sm text-gray-400 italic">No events yet</div>
+    </div>
+
+    <!-- Stats strip -->
+    <div class="grid grid-cols-2 gap-3">
+      <div class="bg-gray-800 rounded-xl border border-gray-700 p-3 text-center">
+        <div class="text-xs text-gray-500 mb-1">Inside Now</div>
+        <div class="text-2xl font-bold text-green-400" id="stat-present">--</div>
+      </div>
+      <div class="bg-gray-800 rounded-xl border border-gray-700 p-3 text-center">
+        <div class="text-xs text-gray-500 mb-1">Total</div>
+        <div class="text-2xl font-bold text-indigo-400" id="stat-total">--</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function fmtHms(decimalHours) {
+  if (decimalHours == null) return '--';
+  const total = Math.round(parseFloat(decimalHours) * 60);
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return h + 'h ' + String(m).padStart(2,'0') + 'm';
+}
+
+// Clock
+function tick() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString();
+}
+tick(); setInterval(tick, 1000);
+
+// Stats
+async function refreshStats() {
+  try {
+    const d = await (await fetch('/api/attendance/stats/today')).json();
+    document.getElementById('stat-present').textContent = d.inside != null ? d.inside : '--';
+    document.getElementById('stat-total').textContent   = d.total_employees != null ? d.total_employees : '--';
+  } catch (e) {}
+}
+refreshStats(); setInterval(refreshStats, 15000);
+
+// Reload encodings
+async function reloadEncodings() {
+  try {
+    const d = await (await fetch('/api/kiosk/reload', { method: 'POST' })).json();
+    showState('info', '&#10003;', 'Encodings Reloaded', d.employees + ' employee(s) loaded');
+    setTimeout(resetState, 3000);
+  } catch (e) {
+    showState('error', '&#10007;', 'Reload Failed', 'Check server logs');
+    setTimeout(resetState, 3000);
+  }
+}
+
+// Camera setup
+const video   = document.getElementById('video');
+const overlay = document.getElementById('overlay');
+const ctx     = overlay.getContext('2d');
+
+navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720, facingMode: 'user' }, audio: false })
+  .then(stream => {
+    video.srcObject = stream;
+    video.onloadedmetadata = () => {
+      overlay.width  = video.videoWidth;
+      overlay.height = video.videoHeight;
+      overlay.style.width  = '100%';
+      overlay.style.height = 'auto';
+      document.getElementById('cam-status').textContent = 'Camera active — scanning...';
+    };
+  })
+  .catch(err => {
+    document.getElementById('cam-status').textContent = 'Camera unavailable: ' + err.message;
+  });
+
+// State rendering
+const IDLE_DELAY = 4000;
+let idleTimer = null;
+
+function resetState() {
+  showState('idle', '&#128065;', 'Ready', 'Stand in front of the camera');
+}
+
+function showState(type, icon, title, sub) {
+  const card = document.getElementById('state-card');
+  const colors = {
+    idle    : 'border-gray-700 bg-gray-800',
+    checkin : 'border-green-600 bg-green-950',
+    checkout: 'border-orange-500 bg-orange-950',
+    unknown : 'border-red-700 bg-red-950',
+    cooldown: 'border-cyan-700 bg-cyan-950',
+    error   : 'border-red-700 bg-red-950',
+    info    : 'border-indigo-600 bg-indigo-950',
+  };
+  card.className = 'flex-1 flex flex-col items-center justify-center rounded-2xl border p-8 text-center transition-all result-enter ' + (colors[type] || colors.idle);
+  document.getElementById('state-icon').innerHTML  = icon;
+  document.getElementById('state-title').textContent = title;
+  document.getElementById('state-sub').textContent   = sub;
+}
+
+function setLastEvent(html) {
+  document.getElementById('last-event').innerHTML = html;
+}
+
+// Face box overlay
+function drawBoxes(faces) {
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
+  // Coordinates from server are in capture-frame space (CAPTURE_W x CAPTURE_H).
+  // Scale them up to the overlay canvas (which matches the full video resolution).
+  const scaleX = overlay.width  / CAPTURE_W;
+  const scaleY = overlay.height / CAPTURE_H;
+
+  faces.forEach(function(f) {
+    if (!f.location) return;
+    const top = f.location[0], right = f.location[1], bottom = f.location[2], left = f.location[3];
+    const x = left  * scaleX;
+    const y = top   * scaleY;
+    const w = (right - left)  * scaleX;
+    const h = (bottom - top)  * scaleY;
+
+    ctx.strokeStyle = f.is_known
+      ? (f.in_cooldown ? '#00e5ff' : (f.event_type === 'check_out' ? '#fb923c' : '#22c55e'))
+      : '#ef4444';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(x, y, w, h);
+
+    const label = f.is_known ? (f.full_name || f.employee_id || '') : 'Unknown';
+    const pct   = Math.round((f.confidence || 0) * 100);
+    ctx.fillStyle = ctx.strokeStyle;
+    ctx.fillRect(x, y + h - 28, w, 28);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.fillText(label + ' (' + pct + '%)', x + 5, y + h - 8);
+  });
+}
+
+// Recognition loop
+// Capture at {{ capture_width }}x{{ capture_width * 9 // 16 }} — smaller upload, faster server decode
+const CAPTURE_W = {{ capture_width }};
+const CAPTURE_H = Math.round(CAPTURE_W * 9 / 16);
+const cap = document.createElement('canvas');
+cap.width  = CAPTURE_W;
+cap.height = CAPTURE_H;
+const capCtx = cap.getContext('2d');
+
+async function sendFrame() {
+  if (video.readyState < 2) return;
+  capCtx.drawImage(video, 0, 0, CAPTURE_W, CAPTURE_H);
+  const blob = await new Promise(function(r) { cap.toBlob(r, 'image/jpeg', 0.7); });
+  if (!blob) return;
+  const form = new FormData();
+  form.append('frame', blob, 'frame.jpg');
+  try {
+    const res  = await fetch('/api/kiosk/recognize', { method: 'POST', body: form });
+    const data = await res.json();
+    handleResult(data);
+  } catch (e) {
+    console.warn('Recognize error:', e);
+  }
+}
+
+function handleResult(data) {
+  if (data.error) return;
+  const faces = data.faces || [];
+  drawBoxes(faces);
+
+  if (faces.length === 0) return;
+
+  const recorded = faces.find(function(f) { return f.recorded && f.event_type; });
+  const cooldown = faces.find(function(f) { return f.is_known && f.in_cooldown; });
+  const unknown  = faces.find(function(f) { return !f.is_known; });
+
+  clearTimeout(idleTimer);
+
+  if (recorded) {
+    const isIn = recorded.event_type === 'check_in';
+    const type = isIn ? 'checkin' : 'checkout';
+    const verb = isIn ? 'Checked In' : 'Checked Out';
+    const icon = isIn ? '&#10003;' : '&#128682;';
+    let sub = (recorded.full_name || recorded.employee_id) + ' — ' + (recorded.department || '');
+    if (!isIn && recorded.worked_hours != null) {
+      sub += ' · Session: ' + fmtHms(recorded.worked_hours);
+      if (recorded.total_hours_today != null)
+        sub += ' | Today: ' + fmtHms(recorded.total_hours_today);
+    }
+    showState(type, icon, verb + '!', sub);
+
+    const time = new Date().toLocaleTimeString();
+    const hoursNote = (!isIn && recorded.total_hours_today != null)
+      ? ' <span class="text-gray-500 text-xs">(' + fmtHms(recorded.total_hours_today) + ' today)</span>' : '';
+    setLastEvent(
+      '<span class="' + (isIn ? 'text-green-400' : 'text-orange-400') + ' font-semibold">' + verb + '</span>' +
+      ' &mdash; <span class="text-white">' + (recorded.full_name || recorded.employee_id) + '</span>' +
+      hoursNote + ' <span class="text-gray-500 text-xs">' + time + '</span>'
+    );
+    idleTimer = setTimeout(resetState, IDLE_DELAY);
+
+  } else if (cooldown) {
+    showState('cooldown', '&#8635;', cooldown.full_name || cooldown.employee_id, 'Already processed');
+    idleTimer = setTimeout(resetState, IDLE_DELAY);
+
+  } else if (unknown) {
+    showState('unknown', '?', 'Unknown Face', 'Not registered in the system');
+    idleTimer = setTimeout(resetState, IDLE_DELAY);
+  }
+}
+
+// Continuous loop: fires immediately after each response — no fixed interval wasted.
+(async function recognitionLoop() {
+  while (true) {
+    await sendFrame();
+    await new Promise(function(r) { setTimeout(r, 50); });
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+data/encodings.pkl
+data/attendance.db
+data/known_faces/
+data/unknown_logs/
+*.egg-info/
+.env
+.claude
+.specify
+.github
+CLAUDE.md

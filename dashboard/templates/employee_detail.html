@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block title %}{{ emp.full_name }}{% endblock %}
+{% block page_title %}Employee Profile{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+  <!-- Left: profile card + edit form -->
+  <div class="space-y-4">
+    <div class="bg-gray-800 rounded-xl border border-gray-700 p-6 text-center">
+      <div class="w-24 h-24 rounded-full bg-indigo-900 flex items-center justify-center text-4xl mx-auto mb-3">
+        {{ emp.full_name[0] }}
+      </div>
+      <div class="text-lg font-semibold text-white">{{ emp.full_name }}</div>
+      <div class="text-sm text-gray-400">{{ emp.employee_id }}</div>
+      <div class="mt-1">
+        {% if emp.is_active %}
+          <span class="px-2 py-0.5 rounded-full bg-green-900 text-green-300 text-xs">Active</span>
+        {% else %}
+          <span class="px-2 py-0.5 rounded-full bg-gray-700 text-gray-400 text-xs">Inactive</span>
+        {% endif %}
+      </div>
+      <div class="mt-4 text-sm text-gray-300 space-y-1 text-left">
+        <div><span class="text-gray-500">Dept:</span> {{ emp.department }}</div>
+        <div><span class="text-gray-500">Role:</span> {{ emp.role or '—' }}</div>
+        <div><span class="text-gray-500">Email:</span> {{ emp.email or '—' }}</div>
+        <div><span class="text-gray-500">Since:</span> {{ emp.registered_at[:10] }}</div>
+      </div>
+    </div>
+
+    <!-- Stats mini cards -->
+    <div class="grid grid-cols-2 gap-3">
+      <div class="bg-gray-800 rounded-xl border border-gray-700 p-4 text-center">
+        <div class="text-2xl font-bold text-indigo-400">{{ total_days }}</div>
+        <div class="text-xs text-gray-400 mt-1">Days Present</div>
+      </div>
+      <div class="bg-gray-800 rounded-xl border border-gray-700 p-4 text-center">
+        <div class="text-xl font-bold text-green-400">{{ total_hours | hms }}</div>
+        <div class="text-xs text-gray-400 mt-1">Hours Worked</div>
+      </div>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="bg-gray-800 rounded-xl border border-gray-700 p-4 space-y-2">
+      <button onclick="document.getElementById('edit-panel').classList.toggle('hidden')"
+              class="w-full px-4 py-2 bg-indigo-700 hover:bg-indigo-600 rounded-lg text-sm">Edit Details</button>
+      {% if emp.is_active %}
+      <button onclick="openModal('Deactivate Employee', 'Deactivate {{ emp.full_name }}? They will no longer be recognized by the system.', '/dashboard/employees/{{ emp.employee_id }}/deactivate')"
+              class="w-full px-4 py-2 bg-gray-700 hover:bg-red-900 rounded-lg text-sm">Deactivate</button>
+      {% else %}
+      <form method="POST" action="/dashboard/employees/{{ emp.employee_id }}/activate">
+        <button type="submit" class="w-full px-4 py-2 bg-gray-700 hover:bg-green-900 rounded-lg text-sm">Activate</button>
+      </form>
+      {% endif %}
+      <button onclick="openModal('Delete Employee', 'Permanently delete {{ emp.full_name }} and all their attendance records? This cannot be undone.', '/dashboard/employees/{{ emp.employee_id }}/delete')"
+              class="w-full px-4 py-2 bg-gray-700 hover:bg-red-900 rounded-lg text-sm text-red-400">Delete Permanently</button>
+    </div>
+  </div>
+
+  <!-- Right: charts + history -->
+  <div class="lg:col-span-2 space-y-4">
+
+    <!-- Edit panel (hidden by default) -->
+    <div id="edit-panel" class="hidden bg-gray-800 rounded-xl border border-indigo-700 p-5">
+      <h3 class="text-sm font-semibold text-indigo-300 mb-4">Edit Employee Details</h3>
+      <form method="POST" action="/dashboard/employees/{{ emp.employee_id }}/edit" class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs text-gray-400">Full Name</label>
+          <input type="text" name="full_name" value="{{ emp.full_name }}" required
+                 class="w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100" />
+        </div>
+        <div>
+          <label class="text-xs text-gray-400">Department</label>
+          <input type="text" name="department" value="{{ emp.department }}" required list="dept-edit"
+                 class="w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100" />
+          <datalist id="dept-edit">
+            {% for d in departments %}<option value="{{ d }}">{% endfor %}
+          </datalist>
+        </div>
+        <div>
+          <label class="text-xs text-gray-400">Role</label>
+          <input type="text" name="role" value="{{ emp.role }}"
+                 class="w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100" />
+        </div>
+        <div>
+          <label class="text-xs text-gray-400">Email</label>
+          <input type="email" name="email" value="{{ emp.email }}"
+                 class="w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100" />
+        </div>
+        <div class="col-span-2 flex gap-3 justify-end mt-1">
+          <button type="button" onclick="document.getElementById('edit-panel').classList.add('hidden')"
+                  class="px-4 py-2 bg-gray-700 rounded-lg text-sm">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm">Save Changes</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Monthly hours chart -->
+    <div class="bg-gray-800 rounded-xl border border-gray-700 p-5">
+      <h3 class="text-sm font-semibold text-gray-300 mb-4">Monthly Hours (Last 6 Months)</h3>
+      <canvas id="monthlyChart" height="80"></canvas>
+    </div>
+
+    <!-- Attendance history table -->
+    <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+      <div class="px-5 py-4 border-b border-gray-700">
+        <h3 class="text-sm font-semibold text-gray-300">Attendance History</h3>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-900 text-gray-400 text-xs uppercase">
+            <tr>
+              <th class="px-5 py-3 text-left">Event</th>
+              <th class="px-5 py-3 text-left">Timestamp</th>
+              <th class="px-5 py-3 text-left">Hours Worked</th>
+              <th class="px-5 py-3 text-left">Door</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-700">
+            {% for r in history %}
+            <tr>
+              <td class="px-5 py-2">
+                {% if r.event_type == 'check_in' %}
+                  <span class="px-2 py-0.5 rounded bg-green-900 text-green-300 text-xs">Check In</span>
+                {% else %}
+                  <span class="px-2 py-0.5 rounded bg-orange-900 text-orange-300 text-xs">Check Out</span>
+                {% endif %}
+              </td>
+              <td class="px-5 py-2 text-gray-300 text-xs">{{ r.timestamp[:19] }}</td>
+              <td class="px-5 py-2 text-gray-400">{{ r.worked_hours | hms }}</td>
+              <td class="px-5 py-2 text-gray-500 text-xs">{{ r.door_id }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="px-5 py-8 text-center text-gray-500">No attendance records yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const monthlyData = {{ monthly_hours | tojson }};
+new Chart(document.getElementById('monthlyChart'), {
+  type: 'bar',
+  data: {
+    labels: monthlyData.map(d => d.month),
+    datasets: [{
+      label: 'Hours Worked',
+      data: monthlyData.map(d => d.hours),
+      backgroundColor: '#6366f1',
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' } },
+      y: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' }, beginAtZero: true }
+    }
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}UniAttend{% endblock %} — UniAttend</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { DEFAULT: '#6366f1', dark: '#4f46e5' }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="/static/css/dashboard.css" />
+  {% block head %}{% endblock %}
+</head>
+<body class="dark h-full bg-gray-950 text-gray-100 font-sans">
+
+<div class="flex h-full min-h-screen">
+
+  <!-- Sidebar -->
+  <aside class="w-60 flex-shrink-0 bg-gray-900 border-r border-gray-800 flex flex-col">
+    <div class="px-6 py-5 border-b border-gray-800">
+      <span class="text-xl font-bold text-indigo-400 tracking-tight">🏛 UniAttend</span>
+    </div>
+    <nav class="flex-1 px-3 py-4 space-y-1">
+      {% set nav = [
+        ('/dashboard',             '📊', 'Dashboard'),
+        ('/dashboard/employees',   '👥', 'Employees'),
+        ('/dashboard/attendance',  '📋', 'Attendance Log'),
+        ('/dashboard/reports',     '📈', 'Reports'),
+        ('/dashboard/guests',      '👤', 'Guests'),
+        ('/kiosk',                 '🖥️', 'Kiosk'),
+      ] %}
+      {% for href, icon, label in nav %}
+        <a href="{{ href }}"
+           class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition
+                  {% if request.url.path == href or (href != '/dashboard' and request.url.path.startswith(href)) %}
+                    bg-indigo-600 text-white
+                  {% else %}
+                    text-gray-400 hover:bg-gray-800 hover:text-white
+                  {% endif %}">
+          <span>{{ icon }}</span>{{ label }}
+        </a>
+      {% endfor %}
+    </nav>
+    <div class="px-3 py-4 border-t border-gray-800">
+      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-500 hover:text-gray-300">
+        <span>⚙️</span>Settings
+      </a>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <div class="flex-1 flex flex-col overflow-hidden">
+    <!-- Top bar -->
+    <header class="h-14 bg-gray-900 border-b border-gray-800 flex items-center justify-between px-6 flex-shrink-0">
+      <h1 class="text-base font-semibold text-gray-200">{% block page_title %}{% endblock %}</h1>
+      <span class="text-xs text-gray-500" id="clock"></span>
+    </header>
+
+    <!-- Toast area -->
+    <div id="toast-area" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <!-- Page body -->
+    <main class="flex-1 overflow-y-auto p-6">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+<!-- Confirmation modal -->
+<div id="confirm-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+  <div class="bg-gray-800 rounded-xl p-6 w-96 shadow-xl border border-gray-700">
+    <h3 class="text-lg font-semibold text-white mb-2" id="modal-title">Confirm</h3>
+    <p class="text-sm text-gray-400 mb-6" id="modal-body"></p>
+    <div class="flex gap-3 justify-end">
+      <button onclick="closeModal()" class="px-4 py-2 text-sm rounded-lg bg-gray-700 hover:bg-gray-600">Cancel</button>
+      <form id="modal-form" method="POST">
+        <button type="submit" class="px-4 py-2 text-sm rounded-lg bg-red-600 hover:bg-red-500 text-white">Confirm</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Clock
+  function tick() {
+    const el = document.getElementById('clock');
+    if (el) el.textContent = new Date().toLocaleString();
+  }
+  tick(); setInterval(tick, 1000);
+
+  // Toast
+  function showToast(msg, type = 'success') {
+    const bg = type === 'success' ? 'bg-green-600' : 'bg-red-600';
+    const div = document.createElement('div');
+    div.className = `${bg} text-white text-sm px-4 py-3 rounded-lg shadow-lg transition-opacity duration-500`;
+    div.textContent = msg;
+    document.getElementById('toast-area').appendChild(div);
+    setTimeout(() => { div.style.opacity = '0'; setTimeout(() => div.remove(), 500); }, 3500);
+  }
+
+  // Modal
+  function openModal(title, body, action) {
+    document.getElementById('modal-title').textContent = title;
+    document.getElementById('modal-body').textContent = body;
+    document.getElementById('modal-form').action = action;
+    document.getElementById('confirm-modal').classList.remove('hidden');
+  }
+  function closeModal() {
+    document.getElementById('confirm-modal').classList.add('hidden');
+  }
+
+  // URL param toasts
+  const params = new URLSearchParams(location.search);
+  if (params.get('saved'))       showToast('Changes saved.');
+  if (params.get('deactivated')) showToast('Employee deactivated.', 'error');
+  if (params.get('activated'))   showToast('Employee activated.');
+  if (params.get('deleted'))     showToast('Employee deleted.', 'error');
+  if (params.get('registered'))  showToast('Employee registered successfully.');
+</script>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>

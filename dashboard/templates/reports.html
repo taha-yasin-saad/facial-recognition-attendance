@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block page_title %}HR Reports & Analytics{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+
+<!-- Month selector + export -->
+<div class="flex flex-wrap gap-3 items-center mb-6">
+  <form method="GET" class="flex gap-3">
+    <input type="month" name="month" value="{{ month }}"
+           class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-indigo-500" />
+    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm">Load Report</button>
+  </form>
+  {% set month_start = month + '-01' %}
+  <a href="/api/attendance/export?from={{ month }}-01&to={{ month }}-31"
+     class="ml-auto flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-green-800 rounded-lg text-sm">
+    ⬇ Export Monthly CSV
+  </a>
+</div>
+
+<!-- Summary cards -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+  <div class="bg-gray-800 rounded-xl border border-gray-700 p-4">
+    <div class="text-xs text-gray-400 mb-1">Total Work Hours</div>
+    <div class="text-xl font-bold text-indigo-400">{{ total_hours | hms }}</div>
+  </div>
+  <div class="bg-gray-800 rounded-xl border border-gray-700 p-4">
+    <div class="text-xs text-gray-400 mb-1">Avg Days Present</div>
+    <div class="text-2xl font-bold text-green-400">{{ avg_days }}</div>
+  </div>
+  {% if top_emp %}
+  <div class="bg-gray-800 rounded-xl border border-gray-700 p-4 col-span-2">
+    <div class="text-xs text-gray-400 mb-1">Top Attendance Employee</div>
+    <div class="text-lg font-bold text-yellow-400">{{ top_emp.full_name }}</div>
+    <div class="text-xs text-gray-500">{{ top_emp.department }} — {{ top_emp.total_hours | hms }} worked</div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Charts -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+  <div class="bg-gray-800 rounded-xl border border-gray-700 p-5">
+    <h3 class="text-sm font-semibold text-gray-300 mb-4">Hours by Department</h3>
+    <canvas id="deptChart" height="120"></canvas>
+  </div>
+  <div class="bg-gray-800 rounded-xl border border-gray-700 p-5">
+    <h3 class="text-sm font-semibold text-gray-300 mb-4">Daily Attendance Count</h3>
+    <canvas id="dailyChart" height="120"></canvas>
+  </div>
+</div>
+
+<!-- Per-employee table -->
+<div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+  <div class="px-5 py-4 border-b border-gray-700">
+    <h3 class="text-sm font-semibold text-gray-300">Employee Breakdown — {{ month }}</h3>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-900 text-gray-400 text-xs uppercase">
+        <tr>
+          <th class="px-5 py-3 text-left">Employee</th>
+          <th class="px-5 py-3 text-left">Department</th>
+          <th class="px-5 py-3 text-right">Days Present</th>
+          <th class="px-5 py-3 text-right">Total Hours</th>
+          <th class="px-5 py-3 text-right">Avg Hrs/Day</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-700">
+        {% for r in report %}
+        <tr class="hover:bg-gray-750">
+          <td class="px-5 py-3">
+            <a href="/dashboard/employees/{{ r.employee_id }}" class="text-indigo-400 hover:underline font-medium">{{ r.full_name }}</a>
+            <div class="text-xs text-gray-500">{{ r.employee_id }}</div>
+          </td>
+          <td class="px-5 py-3 text-gray-400">{{ r.department }}</td>
+          <td class="px-5 py-3 text-right text-gray-300">{{ r.days_present or 0 }}</td>
+          <td class="px-5 py-3 text-right text-gray-300">{{ r.total_hours | hms }}</td>
+          <td class="px-5 py-3 text-right text-gray-400">
+            {% if r.days_present and r.days_present > 0 %}
+              {{ ((r.total_hours or 0) / r.days_present) | hms }}
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="px-5 py-10 text-center text-gray-500">No data for {{ month }}.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const deptData = {{ dept_hours | tojson }};
+new Chart(document.getElementById('deptChart'), {
+  type: 'bar',
+  data: {
+    labels: deptData.map(d => d.department),
+    datasets: [{
+      label: 'Hours',
+      data: deptData.map(d => d.total_hours),
+      backgroundColor: '#6366f1',
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' }, beginAtZero: true },
+      y: { ticks: { color: '#9ca3af' }, grid: { display: false } }
+    }
+  }
+});
+
+const dailyData = {{ daily | tojson }};
+new Chart(document.getElementById('dailyChart'), {
+  type: 'line',
+  data: {
+    labels: dailyData.map(d => d.day),
+    datasets: [{
+      label: 'Employees Present',
+      data: dailyData.map(d => d.count),
+      borderColor: '#22c55e',
+      backgroundColor: 'rgba(34,197,94,0.1)',
+      fill: true,
+      tension: 0.3,
+      pointRadius: 3,
+    }]
+  },
+  options: {
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: '#9ca3af', maxRotation: 45 }, grid: { color: '#1f2937' } },
+      y: { ticks: { color: '#9ca3af', stepSize: 1 }, grid: { color: '#1f2937' }, beginAtZero: true }
+    }
+  }
+});
+</script>
+{% endblock %}

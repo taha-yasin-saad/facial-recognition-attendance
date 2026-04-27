@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Add Employee{% endblock %}
+{% block page_title %}Add New Employee{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+  <form id="register-form" enctype="multipart/form-data">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+      <!-- Left: form fields -->
+      <div class="bg-gray-800 rounded-xl border border-gray-700 p-6 space-y-4">
+        <h2 class="text-sm font-semibold text-gray-300 mb-2">Employee Details</h2>
+
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Employee ID *</label>
+          <input type="text" name="employee_id" required
+                 class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500"
+                 placeholder="EMP001" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Full Name *</label>
+          <input type="text" name="full_name" required
+                 class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500"
+                 placeholder="Ahmed Al Mansouri" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Department *</label>
+          <input type="text" name="department" required list="dept-list"
+                 class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500"
+                 placeholder="IT" />
+          <datalist id="dept-list">
+            {% for d in departments %}<option value="{{ d }}">{% endfor %}
+          </datalist>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Role / Title</label>
+          <input type="text" name="role"
+                 class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500"
+                 placeholder="Software Engineer" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Email</label>
+          <input type="email" name="email"
+                 class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500"
+                 placeholder="ahmed@university.ae" />
+        </div>
+      </div>
+
+      <!-- Right: webcam capture -->
+      <div class="bg-gray-800 rounded-xl border border-gray-700 p-6 flex flex-col">
+        <h2 class="text-sm font-semibold text-gray-300 mb-3">Face Photos (5 required)</h2>
+
+        <div class="relative bg-gray-900 rounded-lg overflow-hidden aspect-video mb-3">
+          <video id="webcam" autoplay playsinline class="w-full h-full object-cover"></video>
+          <div id="countdown" class="hidden absolute inset-0 flex items-center justify-center text-6xl font-bold text-white drop-shadow-lg"></div>
+          <div id="cam-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-gray-500 text-sm gap-2">
+            <span class="text-4xl">📷</span>Camera not started
+          </div>
+        </div>
+
+        <div id="thumbnails" class="flex gap-2 mb-4 min-h-14 flex-wrap"></div>
+
+        <div class="flex gap-3 mt-auto">
+          <button type="button" id="start-cam-btn" onclick="startCamera()"
+                  class="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm">Start Camera</button>
+          <button type="button" id="capture-btn" onclick="capturePhotos()" disabled
+                  class="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm disabled:opacity-40 disabled:cursor-not-allowed">
+            Capture 5 Photos
+          </button>
+        </div>
+
+        <p id="capture-status" class="text-xs text-gray-500 mt-2 text-center"></p>
+      </div>
+    </div>
+
+    <div class="mt-5 flex gap-3 justify-end">
+      <a href="/dashboard/employees" class="px-5 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm">Cancel</a>
+      <button type="submit" id="submit-btn" disabled
+              class="px-5 py-2 bg-green-600 hover:bg-green-500 rounded-lg text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed">
+        <span id="submit-label">Register Employee</span>
+      </button>
+    </div>
+
+    <p id="form-error" class="text-red-400 text-sm mt-3 hidden text-right"></p>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/webcam.js"></script>
+{% endblock %}

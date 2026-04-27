@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Guests{% endblock %}
+{% block page_title %}Unknown Faces / Guest Registration{% endblock %}
+
+{% block content %}
+
+<div class="flex items-center justify-between mb-5">
+  <div class="flex gap-3">
+    <a href="/dashboard/guests"
+       class="px-4 py-2 rounded-lg text-sm {% if not show_all %}bg-indigo-600 text-white{% else %}bg-gray-700 text-gray-300 hover:bg-gray-600{% endif %}">
+      Unregistered
+    </a>
+    <a href="/dashboard/guests?show_all=true"
+       class="px-4 py-2 rounded-lg text-sm {% if show_all %}bg-indigo-600 text-white{% else %}bg-gray-700 text-gray-300 hover:bg-gray-600{% endif %}">
+      All Captures
+    </a>
+  </div>
+  <span class="text-xs text-gray-500">Click a photo to register the person as a guest</span>
+</div>
+
+{% if logs %}
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+  {% for log in logs %}
+  <div class="bg-gray-800 rounded-xl border {% if log.registered_as %}border-green-800{% else %}border-gray-700{% endif %} overflow-hidden group cursor-pointer"
+       onclick="openRegister({{ log.id }}, '{{ log.timestamp[:16] }}', '{{ log.snapshot_path.split('/')[-1].split('\\\\')[-1] if log.snapshot_path else '' }}')">
+
+    <!-- Photo -->
+    <div class="aspect-square bg-gray-900 overflow-hidden relative">
+      {% if log.snapshot_path %}
+        <img src="/dashboard/guests/image/{{ log.snapshot_path.split('/')[-1].split('\\')[-1] }}"
+             alt="Unknown face"
+             class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+             onerror="this.parentElement.innerHTML='<div class=\'w-full h-full flex items-center justify-center text-gray-600 text-3xl\'>?</div>'" />
+      {% else %}
+        <div class="w-full h-full flex items-center justify-center text-gray-600 text-3xl">?</div>
+      {% endif %}
+      {% if log.registered_as %}
+        <div class="absolute top-1 right-1 bg-green-600 text-white text-xs px-1.5 py-0.5 rounded font-medium">
+          Registered
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Info -->
+    <div class="p-2">
+      <div class="text-xs text-gray-400">{{ log.timestamp[:16] }}</div>
+      {% if log.registered_as %}
+        <div class="text-xs text-green-400 mt-0.5 truncate">{{ log.registered_as }}</div>
+      {% else %}
+        <div class="text-xs text-indigo-400 mt-0.5 group-hover:underline">+ Register as guest</div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Pagination -->
+<div class="flex items-center justify-between mt-6 text-xs text-gray-400">
+  <span>Page {{ page }}</span>
+  <div class="flex gap-2">
+    {% if page > 1 %}
+      <a href="?page={{ page - 1 }}&show_all={{ show_all|lower }}"
+         class="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600">Prev</a>
+    {% endif %}
+    {% if has_next %}
+      <a href="?page={{ page + 1 }}&show_all={{ show_all|lower }}"
+         class="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600">Next</a>
+    {% endif %}
+  </div>
+</div>
+
+{% else %}
+<div class="flex flex-col items-center justify-center py-24 text-center">
+  <div class="text-6xl mb-4">&#128064;</div>
+  <div class="text-gray-400 text-sm">No unknown face captures yet.</div>
+  <div class="text-gray-600 text-xs mt-1">They will appear here when the kiosk detects an unregistered person.</div>
+</div>
+{% endif %}
+
+<!-- Register modal -->
+<div id="register-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+  <div class="bg-gray-800 rounded-2xl shadow-2xl border border-gray-700 w-full max-w-sm overflow-hidden">
+
+    <!-- Photo preview -->
+    <div class="bg-gray-900 flex items-center justify-center" style="height:200px">
+      <img id="modal-photo" src="" alt="Guest face"
+           class="h-full w-full object-cover"
+           onerror="this.style.display='none'" />
+    </div>
+
+    <div class="p-6">
+      <h3 class="text-lg font-semibold text-white mb-1">Register as Guest</h3>
+      <p id="modal-time" class="text-xs text-gray-500 mb-4"></p>
+
+      <form id="register-form" method="POST" class="space-y-3">
+        <div>
+          <label class="text-xs text-gray-400">Full Name <span class="text-red-400">*</span></label>
+          <input type="text" name="full_name" required autofocus
+                 placeholder="e.g. John Smith"
+                 class="w-full mt-1 bg-gray-900 border border-gray-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-sm text-gray-100 outline-none" />
+        </div>
+        <div>
+          <label class="text-xs text-gray-400">Notes / Company (optional)</label>
+          <input type="text" name="notes"
+                 placeholder="e.g. ABC Corp, interview candidate"
+                 class="w-full mt-1 bg-gray-900 border border-gray-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-sm text-gray-100 outline-none" />
+        </div>
+        <div class="flex gap-3 pt-1">
+          <button type="button" onclick="closeRegister()"
+                  class="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm">Cancel</button>
+          <button type="submit"
+                  class="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-medium">Register</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openRegister(logId, timestamp, filename) {
+  document.getElementById('modal-photo').src = '/dashboard/guests/image/' + filename;
+  document.getElementById('modal-time').textContent = 'Captured: ' + timestamp;
+  document.getElementById('register-form').action = '/dashboard/guests/' + logId + '/register';
+  document.getElementById('register-modal').classList.remove('hidden');
+  document.querySelector('#register-form input[name="full_name"]').focus();
+}
+function closeRegister() {
+  document.getElementById('register-modal').classList.add('hidden');
+}
+document.getElementById('register-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeRegister();
+});
+</script>
+{% endblock %}

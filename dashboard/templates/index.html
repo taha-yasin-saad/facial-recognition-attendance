@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard Overview{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<meta http-equiv="refresh" content="{{ refresh }}">
+{% endblock %}
+
+{% block content %}
+
+<!-- Stat cards -->
+<div class="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
+  {% set cards = [
+    ('Total Employees', stats.total_employees, 'text-indigo-400', '👥'),
+    ('Inside Now',      stats.inside,           'text-green-400',  '✅'),
+    ('Attended Today',  stats.present,          'text-cyan-400',   '📅'),
+    ('On Break / Left', stats.checked_out,      'text-orange-400', '🚪'),
+    ('Absent',          stats.absent,           'text-red-400',    '❌'),
+    ('Unknown Alerts',  stats.unknown_alerts,   'text-yellow-400', '⚠️'),
+  ] %}
+  {% for label, value, color, icon in cards %}
+  <div class="bg-gray-800 rounded-xl p-4 border border-gray-700">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-xs text-gray-400 uppercase tracking-wide">{{ label }}</span>
+      <span class="text-lg">{{ icon }}</span>
+    </div>
+    <div class="text-3xl font-bold {{ color }}">{{ value }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Charts row -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+  <!-- Hourly bar chart -->
+  <div class="lg:col-span-2 bg-gray-800 rounded-xl p-5 border border-gray-700">
+    <h2 class="text-sm font-semibold text-gray-300 mb-4">Check-ins by Hour (Today)</h2>
+    <canvas id="hourlyChart" height="100"></canvas>
+  </div>
+  <!-- Donut chart -->
+  <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 flex flex-col">
+    <h2 class="text-sm font-semibold text-gray-300 mb-4">Attendance Breakdown</h2>
+    <div class="flex-1 flex items-center justify-center">
+      <canvas id="donutChart" width="200" height="200"></canvas>
+    </div>
+    <div class="mt-4 flex justify-center gap-4 text-xs text-gray-400">
+      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500 inline-block"></span>Inside Now</span>
+      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-orange-400 inline-block"></span>On Break / Left</span>
+      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-gray-600 inline-block"></span>Absent</span>
+    </div>
+  </div>
+</div>
+
+<!-- Who's Inside -->
+<div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+  <div class="px-5 py-4 border-b border-gray-700 flex items-center justify-between">
+    <h2 class="text-sm font-semibold text-gray-300">Who's Inside Right Now ({{ present|length }})</h2>
+    <span class="text-xs text-gray-500">Auto-refreshes every {{ refresh }}s</span>
+  </div>
+  {% if present %}
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-900 text-gray-400 text-xs uppercase">
+        <tr>
+          <th class="px-5 py-3 text-left">Employee</th>
+          <th class="px-5 py-3 text-left">Department</th>
+          <th class="px-5 py-3 text-left">Role</th>
+          <th class="px-5 py-3 text-left">Check-in Time</th>
+          <th class="px-5 py-3 text-left">Duration</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-700">
+        {% for e in present %}
+        <tr class="hover:bg-gray-750 transition">
+          <td class="px-5 py-3">
+            <a href="/dashboard/employees/{{ e.employee_id }}" class="font-medium text-indigo-400 hover:underline">{{ e.full_name }}</a>
+            <div class="text-xs text-gray-500">{{ e.employee_id }}</div>
+          </td>
+          <td class="px-5 py-3 text-gray-300">{{ e.department }}</td>
+          <td class="px-5 py-3 text-gray-400">{{ e.role }}</td>
+          <td class="px-5 py-3 text-gray-300">{{ e.checkin_time[:19] }}</td>
+          <td class="px-5 py-3">
+            <span class="inline-block px-2 py-0.5 rounded bg-green-900 text-green-300 text-xs" data-checkin="{{ e.checkin_time }}">—</span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="px-5 py-10 text-center text-gray-500 text-sm">No one is currently inside.</div>
+  {% endif %}
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Hourly chart
+const hourlyData = {{ hourly | tojson }};
+const hours = Array.from({length: 24}, (_, i) => String(i).padStart(2, '0'));
+const counts = hours.map(h => {
+  const found = hourlyData.find(d => d.hour === h);
+  return found ? found.count : 0;
+});
+new Chart(document.getElementById('hourlyChart'), {
+  type: 'bar',
+  data: {
+    labels: hours.map(h => h + ':00'),
+    datasets: [{
+      label: 'Check-ins',
+      data: counts,
+      backgroundColor: '#6366f1',
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: '#9ca3af', maxRotation: 0 }, grid: { color: '#1f2937' } },
+      y: { ticks: { color: '#9ca3af', stepSize: 1 }, grid: { color: '#1f2937' }, beginAtZero: true }
+    }
+  }
+});
+
+// Donut chart
+new Chart(document.getElementById('donutChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Inside', 'Checked Out', 'Absent'],
+    datasets: [{
+      data: [{{ stats.inside }}, {{ stats.checked_out }}, {{ stats.absent }}],
+      backgroundColor: ['#22c55e', '#f97316', '#4b5563'],
+      borderWidth: 0,
+    }]
+  },
+  options: {
+    cutout: '70%',
+    plugins: { legend: { display: false } }
+  }
+});
+
+// Duration counters
+document.querySelectorAll('[data-checkin]').forEach(el => {
+  const checkin = new Date(el.dataset.checkin);
+  function update() {
+    const diff = Math.floor((Date.now() - checkin) / 1000);
+    const h = Math.floor(diff / 3600);
+    const m = Math.floor((diff % 3600) / 60);
+    el.textContent = `${h}h ${m}m`;
+  }
+  update(); setInterval(update, 1000);
+});
+</script>
+{% endblock %}
