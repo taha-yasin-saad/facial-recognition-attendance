@@ -1,6 +1,6 @@
 # UniAttend — Face Recognition Attendance System
 
-A university employee door access and attendance system powered by real-time face recognition, with a full admin dashboard and REST API.
+A university user door access and attendance system powered by real-time face recognition, with a full admin dashboard and REST API.
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python) ![FastAPI](https://img.shields.io/badge/FastAPI-0.111+-green?logo=fastapi) ![SQLite](https://img.shields.io/badge/Database-SQLite-lightgrey?logo=sqlite) ![License](https://img.shields.io/badge/License-MIT-yellow)
 
@@ -8,13 +8,13 @@ A university employee door access and attendance system powered by real-time fac
 
 ## Features
 
-- **Real-time face recognition** via webcam or RTSP camera stream
+- **Real-time face recognition** via browser-based kiosk (no extra process needed)
 - **Automatic check-in / check-out** with cooldown enforcement
 - **Guest registration** directly from unknown-face alerts
-- **Admin dashboard** — live overview, employee management, attendance log, HR reports
+- **Admin dashboard** — live overview, user management, attendance log, HR reports
 - **REST API** with Swagger docs
 - **CSV export** for payroll/HR integrations
-- **Kiosk mode** — browser-based webcam capture endpoint for door terminals
+- **Kiosk mode** — browser-based webcam capture for door terminals, built into the dashboard
 
 ---
 
@@ -58,36 +58,27 @@ pip install -r requirements.txt
 
 ## Running the System
 
-Run **both processes in separate terminals**:
+A single command starts everything — the API, dashboard, and kiosk:
 
-**Terminal 1 — API server + Dashboard:**
 ```bash
 uvicorn api:app --reload --host 0.0.0.0 --port 8000
 ```
 
-**Terminal 2 — Live recognition loop:**
-```bash
-python main.py
-```
-
-| Key | Action |
-|-----|--------|
-| `Q` | Quit |
-| `R` | Reload face encodings (after adding new employees) |
+Then open `http://localhost:8000/kiosk` on the door terminal to start face recognition.
 
 ---
 
-## Register an Employee
+## Register a User
 
 ### Via Dashboard
 
-Navigate to `http://localhost:8000/dashboard/employees/add`, fill in the form, and capture photos using the live webcam.
+Navigate to `http://localhost:8000/dashboard/users/add`, fill in the form, and capture photos using the live webcam.
 
 ### Via CLI
 
 ```bash
 python scripts/register_employee.py \
-    --id EMP001 \
+    --id USR001 \
     --name "Ahmed Al Mansouri" \
     --dept "IT" \
     --role "Engineer" \
@@ -103,10 +94,11 @@ Captures 5 webcam photos and rebuilds the face encodings cache automatically.
 | URL | Page |
 |-----|------|
 | `/dashboard` | Live overview & today's stats |
-| `/dashboard/employees` | Employee list & management |
-| `/dashboard/employees/add` | Register new employee |
+| `/dashboard/users` | User list & management |
+| `/dashboard/users/add` | Register new user |
 | `/dashboard/attendance` | Full attendance log with filters |
 | `/dashboard/reports` | Monthly HR reports & charts |
+| `/kiosk` | Face recognition kiosk (door terminal) |
 | `/docs` | Swagger API docs |
 
 ---
@@ -115,19 +107,21 @@ Captures 5 webcam photos and rebuilds the face encodings cache automatically.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/employees` | List employees (`?dept=&active=`) |
-| `GET` | `/api/employees/{id}` | Single employee detail |
-| `POST` | `/api/employees/register` | Register employee (multipart) |
-| `PATCH` | `/api/employees/{id}` | Update employee fields |
-| `PATCH` | `/api/employees/{id}/status` | Activate / deactivate |
-| `DELETE` | `/api/employees/{id}` | Delete employee |
+| `GET` | `/api/users` | List users (`?dept=&active=`) |
+| `GET` | `/api/users/{id}` | Single user detail |
+| `POST` | `/api/users/register` | Register user (multipart) |
+| `PATCH` | `/api/users/{id}` | Update user fields |
+| `PATCH` | `/api/users/{id}/status` | Activate / deactivate |
+| `DELETE` | `/api/users/{id}` | Delete user |
 | `GET` | `/api/attendance/today` | Today's attendance log |
 | `GET` | `/api/attendance/present` | Who is currently inside |
 | `GET` | `/api/attendance/stats/today` | Today's summary counts |
 | `GET` | `/api/attendance/stats/hourly` | Check-ins per hour |
-| `GET` | `/api/attendance/report/monthly?month=YYYY-MM` | Monthly worked hours per employee |
+| `GET` | `/api/attendance/report/monthly?month=YYYY-MM` | Monthly worked hours per user |
 | `GET` | `/api/attendance/export?from=YYYY-MM-DD&to=YYYY-MM-DD` | CSV export |
 | `POST` | `/api/encodings/rebuild` | Rebuild face encodings cache |
+| `POST` | `/api/kiosk/recognize` | Submit a frame for recognition |
+| `POST` | `/api/kiosk/reload` | Reload face encodings in the kiosk |
 | `GET` | `/health` | Health check |
 
 **CSV export example:**
@@ -144,28 +138,19 @@ All settings live in `config.py`:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `CAMERA_INDEX` | `0` | Webcam index or RTSP URL string |
+| `KIOSK_FRAME_WIDTH` | `640` | Capture width sent from browser to server |
 | `FACE_TOLERANCE` | `0.50` | Match threshold — lower is stricter |
 | `RECOGNITION_COOLDOWN` | `300` | Seconds between events for the same person |
 | `MIN_HOURS_BEFORE_CHECKOUT` | `0` | Min hours inside before checkout is allowed |
 | `DOOR_ID` | `"MAIN_ENTRANCE"` | Door label recorded in attendance logs |
-| `REGISTRATION_PHOTOS` | `5` | Photos captured per employee during registration |
-
-### RTSP / Kiosk upgrade
-
-To use an IP camera instead of a USB webcam, set `CAMERA_INDEX` in `config.py`:
-
-```python
-CAMERA_INDEX = "rtsp://admin:password@192.168.1.100:554/stream"
-```
+| `REGISTRATION_PHOTOS` | `5` | Photos captured per user during registration |
 
 ---
 
 ## Project Structure
 
 ```
-├── main.py                    # Live recognition loop
-├── api.py                     # FastAPI routes (REST API + Dashboard)
+├── api.py                     # FastAPI routes (REST API + Dashboard + Kiosk)
 ├── config.py                  # Global configuration
 ├── core/
 │   ├── detector.py            # Face detection & recognition
@@ -178,7 +163,7 @@ CAMERA_INDEX = "rtsp://admin:password@192.168.1.100:554/stream"
 │   ├── templates/             # Jinja2 HTML templates
 │   └── static/                # CSS & JS assets
 ├── data/                      # Runtime data (git-ignored)
-│   ├── known_faces/           # {employee_id}/*.jpg
+│   ├── known_faces/           # {user_id}/*.jpg
 │   ├── encodings.pkl          # Cached face encodings
 │   ├── attendance.db          # SQLite database
 │   └── unknown_logs/          # Snapshots of unrecognized faces
